@@ -147,7 +147,7 @@ async function createRoom() {
       max_players: 8
     })
     
-    const data = res.data.data
+    const data = res.data
     roomId.value = data.room_id
     roomCode.value = data.code
     hostId.value = data.host_user_id
@@ -162,7 +162,7 @@ async function createRoom() {
 async function joinRoom(room_id: string) {
   try {
     const res = await api.joinRoom(room_id)
-    const data = res.data.data
+    const data = res.data
     roomId.value = data.room_id
     roomCode.value = data.code
     hostId.value = data.host_user_id

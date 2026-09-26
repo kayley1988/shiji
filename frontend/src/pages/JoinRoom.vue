@@ -94,7 +94,7 @@ async function joinRoom() {
 
 .join-card {
   width: 100%;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   padding: 28px 24px;
@@ -153,7 +153,7 @@ async function joinRoom() {
   color: #fff !important;
   font-family: var(--font-display) !important;
   font-size: 18px !important;
-  box-shadow: 0 4px 20px rgba(155,58,42,0.3) !important;
+  box-shadow: 0 4px 20px rgba(212,175,55,0.3) !important;
 }
 .btn-join:disabled {
   background: var(--stone-light) !important;

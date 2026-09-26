@@ -227,7 +227,7 @@ function rankIcon(rank?: string) { return rankIconMap[rank || '萌新'] || '🌱
 .drawer-stats {
   display: flex; align-items: center; justify-content: space-around;
   padding: 16px 20px;
-  background: #fff;
+  background: var(--card);
   border-bottom: 1px solid var(--parchment-dark);
 }
 .stat-item { text-align: center; }
@@ -247,8 +247,8 @@ function rankIcon(rank?: string) { return rankIconMap[rank || '萌新'] || '🌱
   transition: background 0.15s;
   border-bottom: 1px solid var(--parchment-dark);
 }
-.nav-item:hover { background: rgba(155,58,42,0.05); }
-.nav-item:active { background: rgba(155,58,42,0.1); }
+.nav-item:hover { background: rgba(212,175,55,0.05); }
+.nav-item:active { background: rgba(212,175,55,0.1); }
 .nav-icon { font-size: 18px; }
 .nav-label { flex: 1; font-size: 15px; color: var(--ink); font-family: var(--font-serif); }
 .nav-arrow { color: var(--stone-light); font-size: 14px; }
@@ -290,8 +290,8 @@ function rankIcon(rank?: string) { return rankIconMap[rank || '萌新'] || '🌱
   position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   padding: 18px 10px;
-  background: #fff;
-  border: 1.5px solid rgba(158,142,126,0.2);
+  background: var(--card);
+  border: 1.5px solid var(--line);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.2s var(--ease-out);

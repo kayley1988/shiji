@@ -230,7 +230,7 @@ onMounted(async () => {
 /* ── 进度卡片 ─────────────────────────── */
 .progress-card {
   margin: 0 20px 20px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-lg);
   padding: 20px;
   box-shadow: var(--shadow-sm);
@@ -371,7 +371,7 @@ onMounted(async () => {
 }
 
 .badge-card {
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   padding: 14px 8px 10px;
   display: flex;
@@ -408,7 +408,7 @@ onMounted(async () => {
   border-radius: 50%;
 }
 .glow-legend { background: radial-gradient(circle, rgba(196,168,130,0.2) 0%, transparent 70%); }
-.glow-epic   { background: radial-gradient(circle, rgba(155,58,42,0.15) 0%, transparent 70%); }
+.glow-epic   { background: radial-gradient(circle, rgba(212,175,55,0.15) 0%, transparent 70%); }
 .glow-rare   { background: radial-gradient(circle, rgba(61,107,74,0.15) 0%, transparent 70%); }
 .glow-common { background: radial-gradient(circle, rgba(158,142,126,0.1) 0%, transparent 70%); }
 
@@ -453,7 +453,7 @@ onMounted(async () => {
   border-radius: 3px;
 }
 .rarity-tag-legend { background: rgba(184,148,46,0.1); color: var(--gold); }
-.rarity-tag-epic   { background: rgba(155,58,42,0.1); color: var(--cinnabar); }
+.rarity-tag-epic   { background: rgba(212,175,55,0.1); color: var(--cinnabar); }
 .rarity-tag-rare   { background: rgba(61,107,74,0.1); color: var(--jade); }
 .rarity-tag-common { background: rgba(158,142,126,0.1); color: var(--stone); }
 
@@ -488,7 +488,7 @@ onMounted(async () => {
   font-size: 2.5rem;
 }
 .badge-detail--legend { background: rgba(184,148,46,0.1); }
-.badge-detail--epic   { background: rgba(155,58,42,0.1); }
+.badge-detail--epic   { background: rgba(212,175,55,0.1); }
 .badge-detail--rare   { background: rgba(61,107,74,0.1); }
 .badge-detail--common { background: rgba(158,142,126,0.1); }
 
@@ -537,7 +537,7 @@ onMounted(async () => {
 .badge-modal {
   width: 100%;
   max-width: 340px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-lg);
   padding: 28px 24px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.2);

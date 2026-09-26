@@ -304,7 +304,7 @@ onMounted(async () => {
   loading.value = true
   try {
     const res = await api.getChallengeDimensions()
-    dimensions.value = res.data.data
+    dimensions.value = res.data
   } catch (e) {
     showToast('加载失败，请重试')
   } finally {
@@ -337,8 +337,8 @@ async function handleStart() {
       form: selected.value.form || undefined,
       count: 10,
     })
-    sessionId.value = res.data.data.session_id
-    questions.value = res.data.data.questions
+    sessionId.value = res.data.session_id
+    questions.value = res.data.questions
     answers.value = questions.value.map(q => ({ line_id: q.line_id, answer: null, isCorrect: null }))
     currentIdx.value = 0
     selectedOpt.value = ''
@@ -392,7 +392,7 @@ async function submitChallenge() {
         .filter(a => a.answer !== null)
         .map(a => ({ line_id: a.line_id, answer: a.answer as string })),
     })
-    resultData.value = res.data.data
+    resultData.value = res.data
     phase.value = 'result'
   } catch (e) {
     showToast('提交失败')
@@ -437,15 +437,15 @@ function handleRetry() {
 .dim-chip {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px; border-radius: 12px;
-  background: #fff; border: 1.5px solid rgba(158,142,126,0.2);
+  background: var(--card); border: 1.5px solid var(--line);
   text-align: left; cursor: pointer; transition: all 0.2s;
-  box-shadow: 0 1px 6px rgba(92,64,32,0.07);
+  box-shadow: 0 1px 6px rgba(0,0,0,0.07);
 }
 .dim-chip:hover { border-color: var(--cinnabar); }
 .dim-chip.active {
   border-color: var(--cinnabar);
-  background: rgba(155,58,42,0.07);
-  box-shadow: 0 2px 10px rgba(155,58,42,0.15);
+  background: rgba(212,175,55,0.07);
+  box-shadow: 0 2px 10px rgba(212,175,55,0.15);
 }
 .dim-chip.small { flex-direction: column; align-items: flex-start; padding: 10px 14px; }
 .chip-name { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink); }
@@ -456,7 +456,7 @@ function handleRetry() {
 /* 主题/形式 tag */
 .dim-tag {
   padding: 6px 14px; border-radius: 20px;
-  background: #fff; border: 1px solid rgba(158,142,126,0.25);
+  background: var(--card); border: 1px solid var(--line);
   font-size: 13px; color: var(--ink); cursor: pointer; transition: all 0.2s;
 }
 .dim-tag:hover { border-color: var(--gold); color: var(--gold); }
@@ -476,14 +476,14 @@ function handleRetry() {
 
 .play-progress { display: flex; align-items: center; gap: 10px; }
 .pp-index { font-size: 13px; color: var(--stone); width: 36px; }
-.pp-bar { flex: 1; height: 6px; background: rgba(158,142,126,0.2); border-radius: 3px; }
+.pp-bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; }
 .pp-fill { height: 100%; background: linear-gradient(90deg, var(--cinnabar), var(--gold)); border-radius: 3px; transition: width 0.4s; }
 .pp-score { font-size: 13px; color: var(--jade); width: 28px; text-align: right; }
 
 /* 题目卡 */
 .q-card {
-  background: #fff; border-radius: 16px; padding: 20px;
-  box-shadow: 0 2px 14px rgba(92,64,32,0.10);
+  background: var(--card); border-radius: 16px; padding: 20px;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.10);
   display: flex; flex-direction: column; gap: 12px;
 }
 .q-meta { font-size: 12px; color: var(--stone); }
@@ -496,14 +496,14 @@ function handleRetry() {
 .q-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .q-opt {
   padding: 12px; border-radius: 10px;
-  background: rgba(245,240,232,0.7); border: 1.5px solid rgba(158,142,126,0.2);
+  background: var(--paper-warm); border: 1.5px solid var(--line);
   font-family: var(--font-serif); font-size: 18px; color: var(--ink);
   cursor: pointer; transition: all 0.2s; text-align: center;
 }
-.q-opt:hover { border-color: var(--cinnabar); background: rgba(155,58,42,0.05); }
-.q-opt.selected { border-color: var(--cinnabar); background: rgba(155,58,42,0.1); color: var(--cinnabar); }
+.q-opt:hover { border-color: var(--cinnabar); background: rgba(212,175,55,0.05); }
+.q-opt.selected { border-color: var(--cinnabar); background: rgba(212,175,55,0.1); color: var(--cinnabar); }
 .q-opt.correct { border-color: var(--jade); background: rgba(61,107,74,0.12); color: var(--jade); }
-.q-opt.wrong { border-color: var(--cinnabar); background: rgba(155,58,42,0.08); color: var(--cinnabar); opacity: 0.7; }
+.q-opt.wrong { border-color: var(--cinnabar); background: rgba(212,175,55,0.08); color: var(--cinnabar); opacity: 0.7; }
 
 .q-feedback { text-align: center; padding: 8px 0; }
 .feedback-correct { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; color: var(--jade); }
@@ -516,7 +516,7 @@ function handleRetry() {
 
 /* 答题点 */
 .q-dots { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
-.q-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(158,142,126,0.2); transition: all 0.2s; }
+.q-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); transition: all 0.2s; }
 .q-dot.done { background: var(--stone); }
 .q-dot.correct { background: var(--jade); }
 .q-dot.wrong { background: var(--cinnabar); }
@@ -525,13 +525,13 @@ function handleRetry() {
 .phase-result { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
 
 .result-card {
-  background: linear-gradient(135deg, rgba(155,58,42,0.1), rgba(184,148,46,0.06));
+  background: linear-gradient(135deg, rgba(212,175,55,0.1), rgba(184,148,46,0.06));
   border-radius: 20px; padding: 28px 20px;
-  text-align: center; border: 1px solid rgba(155,58,42,0.15);
-  box-shadow: 0 4px 20px rgba(155,58,42,0.10);
+  text-align: center; border: 1px solid rgba(212,175,55,0.15);
+  box-shadow: 0 4px 20px rgba(212,175,55,0.10);
 }
 .result-stars { display: flex; justify-content: center; gap: 6px; margin-bottom: 12px; }
-.result-star { font-size: 32px; color: rgba(158,142,126,0.2); transition: color 0.3s; }
+.result-star { font-size: 32px; color: var(--line); transition: color 0.3s; }
 .result-star.filled { color: var(--gold); }
 .result-score { font-family: var(--font-display); font-size: 48px; color: var(--cinnabar); margin-bottom: 4px; }
 .result-sub { font-size: 14px; color: var(--stone); margin-bottom: 6px; }
@@ -540,8 +540,8 @@ function handleRetry() {
 /* 答题回顾 */
 .review-list { display: flex; flex-direction: column; gap: 10px; }
 .review-item {
-  background: #fff; border-radius: 12px; padding: 14px;
-  border-left: 3px solid; box-shadow: 0 1px 6px rgba(92,64,32,0.07);
+  background: var(--card); border-radius: 12px; padding: 14px;
+  border-left: 3px solid; box-shadow: 0 1px 6px rgba(0,0,0,0.07);
 }
 .review-item.correct { border-color: var(--jade); }
 .review-item.wrong { border-color: var(--cinnabar); }

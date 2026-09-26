@@ -222,7 +222,7 @@ async function createRoom() {
 /* ── 表单 ── */
 .form-content { padding: 16px; }
 .section-card {
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   padding: 20px;
@@ -255,7 +255,7 @@ async function createRoom() {
 }
 .mode-option.active {
   border-color: var(--cinnabar);
-  background: rgba(155,58,42,0.04);
+  background: rgba(212,175,55,0.04);
 }
 .mode-opt-icon { flex-shrink: 0; }
 .mode-opt-info { flex: 1; }
@@ -285,7 +285,7 @@ async function createRoom() {
   background: linear-gradient(135deg, var(--cinnabar), var(--cinnabar-light));
   color: #fff;
   border-color: var(--cinnabar);
-  box-shadow: 0 2px 10px rgba(155,58,42,0.3);
+  box-shadow: 0 2px 10px rgba(212,175,55,0.3);
 }
 
 .tip {
@@ -318,7 +318,7 @@ async function createRoom() {
   transition: all 0.2s;
 }
 .config-opt.active {
-  background: rgba(155,58,42,0.1);
+  background: rgba(212,175,55,0.1);
   color: var(--cinnabar);
   border-color: var(--cinnabar);
 }
@@ -357,7 +357,7 @@ async function createRoom() {
   color: #fff !important;
   font-family: var(--font-display) !important;
   font-size: 18px !important;
-  box-shadow: 0 4px 20px rgba(155,58,42,0.35) !important;
+  box-shadow: 0 4px 20px rgba(212,175,55,0.35) !important;
 }
 
 /* ── 动画 ── */

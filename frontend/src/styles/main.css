@@ -1,32 +1,32 @@
 /* ============================================
-   诗语雅集 — 水墨素雅 · 国风设计系统
-   配色：宣纸 / 墨色 / 朱砂 / 青瓷
+   诗语雅集 — 暗夜鎏金 · 国风设计系统
+   配色：玄夜 / 鎏金 / 鎏金白（变量名保留旧称以兼容全局引用）
    ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=ZCOOL+XiaoWei&family=Noto+Sans+SC:wght@300;400;500&family=LXGW+WenKai&display=swap');
 
-/* ── 设计令牌 — 水墨素雅 ─────────────────────── */
+/* ── 设计令牌 — 暗夜鎏金 ─────────────────────── */
 :root {
-  /* 核心配色 */
-  --ink-dark:     #2C2C2C;   /* 墨色 — 标题/主文字 */
-  --ink:         #3D3D3D;   /* 墨色 — 正文 */
-  --ink-light:   #5A5A5A;   /* 淡墨 — 次要文字 */
-  --ink-mist:    #7A8A8A;   /* 青瓷灰 — 辅助文字 */
-  
-  /* 朱砂强调色 */
-  --cinnabar:    #C73E3A;   /* 朱砂红 — 强调/按钮 */
-  --cinnabar-dark: #A83230; /* 深朱砂 */
-  --cinnabar-light: #E85A57; /* 浅朱砂 */
-  
-  /* 宣纸系 */
-  --paper:       #FAF8F3;   /* 宣纸米白 — 页面背景 */
-  --paper-warm:  #F5F1E8;   /* 暖色宣纸 */
-  --card:        #FFFFFF;   /* 糯米白 — 卡片背景 */
-  --card-hover:  #FDFCFA;   /* 卡片悬停 */
-  
+  /* 核心配色（文字） */
+  --ink-dark:     #F2ECDA;   /* 鎏金白 — 标题/主文字 */
+  --ink:         #D9D4C5;   /* 月白 — 正文 */
+  --ink-light:   #ABA694;   /* 淡金灰 — 次要文字 */
+  --ink-mist:    #847F6E;   /* 暮金灰 — 辅助文字 */
+
+  /* 鎏金强调色（沿用 --cinnabar 变量名以兼容全局引用） */
+  --cinnabar:    #D4AF37;   /* 鎏金 — 强调/按钮 */
+  --cinnabar-dark: #B3942E; /* 深鎏金 */
+  --cinnabar-light: #E9CB6B; /* 浅鎏金 */
+
+  /* 玄夜底色系 */
+  --paper:       #14161B;   /* 玄夜 — 页面背景 */
+  --paper-warm:  #191C23;   /* 深夜面板 */
+  --card:        #1E222B;   /* 墨玉 — 卡片背景 */
+  --card-hover:  #252A35;   /* 卡片悬停 */
+
   /* 分割/边框 */
-  --line:        #E8E4DC;   /* 淡墨 — 分割线 */
-  --line-light:  #F0EDE6;   /* 极淡墨 — 边框 */
+  --line:        #2E333F;   /* 夜幕 — 分割线 */
+  --line-light:  #262B35;   /* 深夜 — 边框 */
   
   /* 兼容旧名 */
   --qinglu:       var(--cinnabar);
@@ -62,12 +62,12 @@
   --font-serif:   'LXGW WenKai', 'Noto Serif SC', 'FangSong', Georgia, serif;
   --font-sans:   'Noto Sans SC', 'PingFang SC', sans-serif;
 
-  /* 阴影 — 水墨风 */
-  --shadow-sm:   0 1px 4px rgba(44,44,44,0.06);
-  --shadow-md:   0 2px 12px rgba(44,44,44,0.08);
-  --shadow-lg:   0 4px 24px rgba(44,44,44,0.1);
-  --shadow-qinglu: 0 2px 12px rgba(199,62,58,0.15), 0 1px 3px rgba(0,0,0,0.05);
-  --shadow-inset: inset 0 1px 3px rgba(44,44,44,0.06);
+  /* 阴影 — 暗夜风 */
+  --shadow-sm:   0 1px 4px rgba(0,0,0,0.35);
+  --shadow-md:   0 2px 12px rgba(0,0,0,0.45);
+  --shadow-lg:   0 4px 24px rgba(0,0,0,0.55);
+  --shadow-qinglu: 0 2px 12px rgba(212,175,55,0.22), 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-inset: inset 0 1px 3px rgba(0,0,0,0.3);
 
   /* 圆角 */
   --radius-sm:   4px;
@@ -114,7 +114,7 @@ a:hover { color: var(--cinnabar-dark); }
 
 /* ── 选中文字 ────────────────────────────────── */
 ::selection {
-  background: rgba(199,62,58,0.15);
+  background: rgba(212,175,55,0.25);
   color: var(--ink-dark);
 }
 
@@ -148,7 +148,7 @@ a:hover { color: var(--cinnabar-dark); }
 
 .btn-primary {
   background: var(--cinnabar);
-  color: white;
+  color: #201A05;
 }
 .btn-primary:hover {
   background: var(--cinnabar-dark);
@@ -162,7 +162,7 @@ a:hover { color: var(--cinnabar-dark); }
 }
 .btn-outline:hover {
   background: var(--cinnabar);
-  color: white;
+  color: #201A05;
 }
 
 .btn-ghost {
@@ -214,13 +214,17 @@ a:hover { color: var(--cinnabar-dark); }
   --van-background-2: var(--card);
 }
 
-/* 按钮 */
-.van-button--primary {
+/* 按钮（鎏金底配深色字，对比度更佳） */
+.van-button--primary:not(.van-button--plain) {
   background: var(--cinnabar) !important;
   border-color: var(--cinnabar) !important;
+  color: #201A05 !important;
 }
-.van-button--primary:active {
+.van-button--primary:not(.van-button--plain):active {
   background: var(--cinnabar-dark) !important;
+}
+.van-button--plain.van-button--primary {
+  color: var(--cinnabar) !important;
 }
 
 /* Tab */
@@ -239,8 +243,8 @@ a:hover { color: var(--cinnabar-dark); }
 
 /* 标签 */
 .van-tag--primary {
-  background: rgba(199,62,58,0.1);
-  color: var(--cinnabar);
+  background: rgba(212,175,55,0.14);
+  color: var(--cinnabar-light);
 }
 
 /* 弹出层 */

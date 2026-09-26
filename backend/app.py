@@ -44,6 +44,11 @@ CORS(app, resources={r"/api/*": {"origins": Config.CORS_ORIGINS}}, supports_cred
 engine = create_engine(Config.SQLALCHEMY_DATABASE_URI, echo=Config.SQLALCHEMY_ECHO)
 Session = scoped_session(sessionmaker(bind=engine))
 
+
+def get_db():
+    """全局数据库会话获取函数（多处路由依赖）"""
+    return Session()
+
 # Socket.IO
 socketio = SocketIO(app, cors_allowed_origins=Config.CORS_ORIGINS, async_mode='eventlet')
 
@@ -131,6 +136,7 @@ PUBLIC_PATHS = [
     '/v1/solo/keywords',    # 飞花令关键词
     '/v1/solo/poems',       # 飞花令诗句
     '/v1/daily-theme',      # 每日主题
+    '/v1/challenge',        # 题库闯关（公开）
     '/v1/badges',           # 徽章
     '/v1/me',              # 个人中心
     '/v1/rooms',            # 房间列表
@@ -2252,6 +2258,186 @@ def handle_exception(e):
     """捕获所有未处理的异常"""
     logging.error(f"Unhandled exception: {str(e)}", exc_info=True)
     return jsonify({'error': 'SERVER_ERROR', 'message': '请求处理失败'}), 500
+
+
+# ============ 题库闯关 ============
+
+import random as _random
+
+# 派系 → 诗人映射（基于 INITIAL_POEMS 现有作者）
+CHALLENGE_FACTIONS = {
+    'shanshui':  {'name': '山水田园', 'poets': ['王维', '孟浩然', '柳宗元']},
+    'biansai':   {'name': '边塞征战', 'poets': ['王昌龄', '王之涣', '王翰']},
+    'langman':   {'name': '浪漫豪放', 'poets': ['李白', '贺知章']},
+    'chenyu':    {'name': '沉郁现实', 'poets': ['杜甫', '李绅', '张继']},
+    'yongshi':   {'name': '咏史抒怀', 'poets': ['杜牧', '李商隐', '骆宾王']},
+}
+# 主题意象（从诗句 tags 中筛选的意象字）
+CHALLENGE_THEMES = ['月', '山', '水', '春', '花', '江', '夜', '思', '雪', '酒']
+
+challenge_sessions = {}   # session_id -> {'questions': [...]}
+
+
+def _poem_pid(p):
+    """用标题做稳定 poem_id"""
+    return 'p%08x' % (abs(hash(p['title'])) % 0xFFFFFFFF)
+
+
+def _filter_poems(dynasty=None, faction=None, theme=None, form=None):
+    pool = list(INITIAL_POEMS)
+    if dynasty:
+        pool = [p for p in pool if p['dynasty'] == dynasty]
+    if faction:
+        poets = set(CHALLENGE_FACTIONS.get(faction, {}).get('poets', []))
+        pool = [p for p in pool if p['author'] in poets]
+    if theme:
+        pool = [p for p in pool if any(theme in l.get('tags', []) for l in p['lines'])]
+    if form:
+        size = {'绝句': 4, '律诗': 8}.get(form)
+        if size:
+            pool = [p for p in pool if len(p['lines']) == size]
+    return pool
+
+
+@app.route('/v1/challenge/dimensions', methods=['GET'])
+def challenge_dimensions():
+    """题库维度：朝代 / 派系 / 主题意象 / 诗歌形式"""
+    dynasties, seen = [], set()
+    for p in INITIAL_POEMS:
+        if p['dynasty'] not in seen:
+            seen.add(p['dynasty'])
+            dynasties.append({
+                'id': p['dynasty'], 'name': p['dynasty'],
+                'desc': f"{p['dynasty']}诗", 'count': 0,
+            })
+    for d in dynasties:
+        d['count'] = sum(1 for p in INITIAL_POEMS if p['dynasty'] == d['id'])
+
+    factions = []
+    for fid, info in CHALLENGE_FACTIONS.items():
+        poets = [a for a in info['poets'] if any(p['author'] == a for p in INITIAL_POEMS)]
+        if poets:
+            factions.append({'id': fid, 'name': info['name'], 'poets': poets})
+
+    themes = []
+    for t in CHALLENGE_THEMES:
+        cnt = sum(1 for p in INITIAL_POEMS if any(t in l.get('tags', []) for l in p['lines']))
+        if cnt:
+            themes.append({'id': t, 'name': t})
+
+    forms = [{'id': '绝句', 'name': '绝句'}] \
+        if any(len(p['lines']) == 4 for p in INITIAL_POEMS) else []
+
+    return jsonify({'data': {
+        'dynasties': dynasties,
+        'factions': factions,
+        'themes': themes,
+        'forms': forms,
+    }})
+
+
+def _gen_question(p, idx, all_lines, own_lines, all_titles):
+    """生成一道题：非末句考「下一句」，末句考「出自哪首诗」"""
+    line = p['lines'][idx]
+    line_id = f"{_poem_pid(p)}-{idx}"
+    if idx < len(p['lines']) - 1:
+        answer = p['lines'][idx + 1]['content']
+        q_text = f"「{line['content']}」，下一句是？"
+        cands = [c for c in all_lines
+                 if c != answer and c not in own_lines
+                 and abs(len(c) - len(answer)) <= 3]
+        distractors = _random.sample(cands, min(3, len(cands)))
+    else:
+        answer = p['title']
+        q_text = f"「{line['content']}」出自哪首诗？"
+        cands = [t for t in all_titles if t != answer]
+        distractors = _random.sample(cands, min(3, len(cands)))
+
+    options = distractors + [answer]
+    _random.shuffle(options)
+    return {
+        'poem_id': _poem_pid(p),
+        'line_id': line_id,
+        'question': q_text,
+        'title': p['title'],
+        'author': p['author'],
+        'dynasty': p['dynasty'],
+        'options': options,
+        'answer': answer,
+    }
+
+
+@app.route('/v1/challenge/start', methods=['POST'])
+def challenge_start():
+    """开始闯关：按维度抽题"""
+    payload = request.get_json(silent=True) or {}
+    try:
+        count = min(int(payload.get('count', 10) or 10), 20)
+    except (TypeError, ValueError):
+        count = 10
+    pool = _filter_poems(
+        dynasty=payload.get('dynasty'),
+        faction=payload.get('faction'),
+        theme=payload.get('theme'),
+        form=payload.get('form'),
+    )
+    if not pool:
+        return jsonify({'error': 'NO_POEMS', 'message': '该维度下暂无诗句，请换个维度试试'}), 404
+
+    all_lines = [l['content'] for p in INITIAL_POEMS for l in p['lines']]
+    all_titles = [p['title'] for p in INITIAL_POEMS]
+
+    # 出题候选：打乱 (诗, 句) 组合，一诗最多抽 2 句避免重复感
+    combos = [(p, i) for p in pool for i in range(len(p['lines']))]
+    _random.shuffle(combos)
+    per_poem = {}
+    questions = []
+    for p, i in combos:
+        if len(questions) >= count:
+            break
+        if per_poem.get(p['title'], 0) >= 2:
+            continue
+        per_poem[p['title']] = per_poem.get(p['title'], 0) + 1
+        own = [l['content'] for l in p['lines']]
+        questions.append(_gen_question(p, i, all_lines, own, all_titles))
+
+    session_id = secrets.token_hex(16)
+    challenge_sessions[session_id] = {'questions': questions}
+    return jsonify({'data': {'session_id': session_id, 'questions': questions}})
+
+
+@app.route('/v1/challenge/submit', methods=['POST'])
+def challenge_submit():
+    """提交闯关：服务端判分（不信任前端答案）"""
+    payload = request.get_json(silent=True) or {}
+    sid = payload.get('session_id')
+    session = challenge_sessions.pop(sid, None)
+    if not session:
+        return jsonify({'error': 'SESSION_NOT_FOUND', 'message': '会话已过期，请重新开始'}), 404
+
+    answers = {a.get('line_id'): a.get('answer') for a in payload.get('answers', [])}
+    results, correct = [], 0
+    for q in session['questions']:
+        ua = answers.get(q['line_id'])
+        ok = ua == q['answer']
+        if ok:
+            correct += 1
+        results.append({
+            'line_id': q['line_id'],
+            'title': q['title'],
+            'author': q['author'],
+            'question': q['question'],
+            'user_answer': ua,
+            'correct_answer': q['answer'],
+            'correct': ok,
+        })
+    total = len(session['questions'])
+    score = correct * 10
+    exp_gain = correct * 5
+    return jsonify({'data': {
+        'total': total, 'correct': correct,
+        'score': score, 'exp_gain': exp_gain, 'results': results,
+    }})
 
 
 # ============ 启动 ============

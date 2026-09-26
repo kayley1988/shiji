@@ -188,7 +188,7 @@ async function copy(text: string) {
 }
 
 .color-card {
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);

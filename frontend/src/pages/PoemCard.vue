@@ -242,17 +242,17 @@ onMounted(async () => {
   try {
     // 获取诗句详情
     const res = await api.get(`/v1/poems/${poemId}`)
-    poem.value = res.data.data
+    poem.value = res.data
     
     // 获取赏析
     if (poem.value) {
       const expRes = await api.get(`/v1/poems/${poemId}/explanation`)
-      explanation.value = expRes.data.data?.explanation || ''
+      explanation.value = expRes.data?.explanation || ''
     }
     
     // 获取配额
     const quotaRes = await api.get('/v1/art/quota')
-    quota.value = quotaRes.data.data
+    quota.value = quotaRes.data
   } catch (e) {
     showFailToast('加载失败')
   } finally {
@@ -279,7 +279,7 @@ async function generateArt() {
       custom_prompt: customPrompt.value || undefined
     })
     
-    const data = res.data.data
+    const data = res.data
     
     if (data.task_id) {
       // 轮询任务状态
@@ -306,7 +306,7 @@ async function pollTaskStatus(taskId: string, maxAttempts = 30) {
     
     try {
       const res = await api.get(`/v1/art/tasks/${taskId}`)
-      const task = res.data.data
+      const task = res.data
       
       if (task.status === 'succeeded') {
         generatedImage.value = task.result_url
@@ -552,7 +552,7 @@ function handleMoreAction(action: any) {
 }
 
 .style-preview.modern {
-  background: #fff;
+  background: var(--card);
   border-radius: 2px;
 }
 

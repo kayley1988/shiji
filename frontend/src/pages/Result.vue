@@ -137,7 +137,7 @@
               <!-- 数据 -->
               <polygon
                 :points="radarPoints"
-                fill="rgba(155,58,42,0.15)"
+                fill="rgba(212,175,55,0.15)"
                 stroke="var(--cinnabar)"
                 stroke-width="1.5"
               />
@@ -389,7 +389,7 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 14px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-lg);
   padding: 16px;
   margin-bottom: 10px;
@@ -411,7 +411,7 @@ onMounted(async () => {
 .rank-3::before { background: linear-gradient(to bottom, #CD7F32, #A0522D); }
 .rank-card:not(.rank-1):not(.rank-2):not(.rank-3)::before { background: var(--stone-light); }
 
-.rank-card.self { background: rgba(155,58,42,0.03); }
+.rank-card.self { background: rgba(212,175,55,0.03); }
 
 .rank-badge {
   width: 36px; height: 36px;
@@ -457,7 +457,7 @@ onMounted(async () => {
 .self-tag {
   font-size: 0.6rem;
   padding: 1px 5px;
-  background: rgba(155,58,42,0.1);
+  background: rgba(212,175,55,0.1);
   color: var(--cinnabar);
   border-radius: 3px;
   font-family: var(--font-sans);
@@ -529,7 +529,7 @@ onMounted(async () => {
 }
 
 .chart-card {
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-lg);
   padding: 20px;
   margin-bottom: 12px;
@@ -655,7 +655,7 @@ onMounted(async () => {
 .result-badge {
   flex-shrink: 0;
   width: 80px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   padding: 14px 8px 10px;
   display: flex;
@@ -671,7 +671,7 @@ onMounted(async () => {
 .result-badge:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
 
 .result-badge--legend { border: 1.5px solid rgba(184,148,46,0.4); }
-.result-badge--epic   { border: 1.5px solid rgba(155,58,42,0.3); }
+.result-badge--epic   { border: 1.5px solid rgba(212,175,55,0.3); }
 .result-badge--rare   { border: 1.5px solid rgba(61,107,74,0.3); }
 .result-badge--common { border: 1px solid var(--stone-light); }
 
@@ -697,7 +697,7 @@ onMounted(async () => {
 }
 
 .rarity-tag-legend { background: rgba(184,148,46,0.1); color: var(--gold); }
-.rarity-tag-epic   { background: rgba(155,58,42,0.1); color: var(--cinnabar); }
+.rarity-tag-epic   { background: rgba(212,175,55,0.1); color: var(--cinnabar); }
 .rarity-tag-rare   { background: rgba(61,107,74,0.1); color: var(--jade); }
 .rarity-tag-common { background: rgba(158,142,126,0.1); color: var(--stone); }
 

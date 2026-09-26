@@ -268,7 +268,7 @@ async function loadPeek() {
       page: peekPage.value,
       page_size: 20,
     })
-    const d = res.data.data
+    const d = res.data
     if (d) {
       if (peekPage.value === 1) {
         peekLines.value = d.lines || []
@@ -306,7 +306,7 @@ const finishTitle = computed(() => {
 onMounted(async () => {
   try {
     const res = await api.getPracticeKeywords()
-    const kws = res.data.data?.keywords
+    const kws = res.data?.keywords
     if (kws?.length) {
       keywords.value = kws
     } else {
@@ -343,7 +343,7 @@ async function submitAnswer() {
       line,
       keyword: currentKeyword.value,
     })
-    const d = res.data.data
+    const d = res.data
     validatedAnswer.value = d || {}
     resultCorrect.value = d?.correct === true
     if (resultCorrect.value) correctCount.value++
@@ -399,16 +399,16 @@ function restartGame() {
 /* ── 规则介绍页 ── */
 .phase-intro { padding: 20px 16px; display: flex; flex-direction: column; gap: 16px; }
 .intro-card {
-  background: linear-gradient(135deg, rgba(155,58,42,0.07), rgba(184,148,46,0.04));
+  background: linear-gradient(135deg, rgba(212,175,55,0.07), rgba(184,148,46,0.04));
   border: 1px solid rgba(184,148,46,0.15);
   border-radius: var(--radius-md); padding: 28px 20px; text-align: center;
 }
 .intro-seal {
   display: inline-flex; align-items: center; justify-content: center;
   width: 56px; height: 56px; border-radius: 50%;
-  background: rgba(155,58,42,0.1); color: var(--cinnabar);
+  background: rgba(212,175,55,0.1); color: var(--cinnabar);
   font-family: var(--font-display); font-size: 22px; font-weight: 700;
-  border: 2px solid rgba(155,58,42,0.2);
+  border: 2px solid rgba(212,175,55,0.2);
   margin-bottom: 12px;
 }
 .intro-title {
@@ -444,7 +444,7 @@ function restartGame() {
   display: flex; align-items: center; gap: 10px; padding: 8px 0;
 }
 .gp-index { font-size: 13px; color: var(--stone); width: 30px; }
-.gp-bar { flex: 1; height: 6px; background: rgba(158,142,126,0.25); border-radius: 3px; }
+.gp-bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; }
 .gp-fill { height: 100%; background: linear-gradient(90deg, var(--cinnabar), var(--gold)); border-radius: 3px; transition: width 0.4s; }
 .gp-score { font-size: 13px; color: var(--gold); width: 48px; text-align: right; }
 
@@ -456,7 +456,7 @@ function restartGame() {
   display: flex; align-items: center; justify-content: center;
   background: var(--cinnabar); color: #fff;
   font-family: var(--font-display); font-size: 28px; font-weight: 700;
-  box-shadow: 0 4px 14px rgba(155,58,42,0.32);
+  box-shadow: 0 4px 14px rgba(212,175,55,0.32);
   border: 2px solid rgba(255,255,255,0.3);
 }
 .kw-hint { font-size: 13px; color: var(--stone); line-height: 1.6; text-align: center; }
@@ -464,7 +464,7 @@ function restartGame() {
 
 /* 答题卡 */
 .answer-card {
-  background: #fff; border-radius: var(--radius-md);
+  background: var(--card); border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm); padding: 16px; display: flex; flex-direction: column; gap: 12px;
 }
 .answer-field :deep(.van-field__control) {
@@ -488,7 +488,7 @@ function restartGame() {
 
 /* 结果卡 */
 .result-card {
-  background: #fff; border-radius: var(--radius-md);
+  background: var(--card); border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm); padding: 20px;
 }
 .result-correct { border-left: 3px solid var(--gold); }
@@ -524,7 +524,7 @@ function restartGame() {
 .hints { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
 .hints-label { font-size: 12px; color: var(--stone); }
 .hints {
-  background: rgba(245,240,232,0.7);
+  background: var(--paper-warm);
   border-radius: 10px; padding: 12px 14px;
   margin-top: 6px;
 }
@@ -574,7 +574,7 @@ function restartGame() {
 /* ── 完成页 ── */
 .phase-finish { padding: 20px 16px; display: flex; flex-direction: column; gap: 14px; }
 .finish-card {
-  background: linear-gradient(135deg, rgba(155,58,42,0.08), rgba(184,148,46,0.05));
+  background: linear-gradient(135deg, rgba(212,175,55,0.08), rgba(184,148,46,0.05));
   border: 1px solid rgba(184,148,46,0.15); border-radius: var(--radius-md);
   padding: 32px 20px; text-align: center;
 }
@@ -593,7 +593,7 @@ function restartGame() {
 .fs-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .fs-num { font-size: 26px; font-weight: 700; color: var(--ink); }
 .fs-label { font-size: 11px; color: var(--stone); }
-.fs-div { width: 1px; height: 32px; background: rgba(158,142,126,0.2); }
+.fs-div { width: 1px; height: 32px; background: var(--line); }
 
 .restart-btn { border-radius: var(--radius-md); height: 48px; font-size: 16px; }
 .back-btn { border-radius: var(--radius-md); height: 44px; }

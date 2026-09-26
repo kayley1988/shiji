@@ -220,7 +220,7 @@ async function loadStats() {
   error.value = ''
   try {
     const res = await api.getAdminStats()
-    data.value = res.data.data
+    data.value = res.data
   } catch (e: any) {
     if (e?.status === 403 || e?.message?.includes('403')) {
       error.value = '⚠️ 需要管理员权限'
@@ -240,7 +240,7 @@ onMounted(() => { loadStats() })
 
 .page-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 16px 20px; background: #fff;
+  padding: 16px 20px; background: var(--card);
 }
 .header-left { width: 40px; cursor: pointer; }
 .header-title { font-size: 16px; font-weight: 600; color: var(--yanhong); }
@@ -251,7 +251,7 @@ onMounted(() => { loadStats() })
   padding: 60px; gap: 12px; color: #999;
 }
 .loading-spinner {
-  width: 32px; height: 32px; border: 3px solid rgba(155,58,42,0.2);
+  width: 32px; height: 32px; border: 3px solid rgba(212,175,55,0.2);
   border-top-color: var(--yanhong); border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -276,13 +276,13 @@ onMounted(() => { loadStats() })
   margin: 0 16px 12px;
 }
 .stat-mini {
-  background: #fff; border-radius: 8px; padding: 10px 6px;
+  background: var(--card); border-radius: 8px; padding: 10px 6px;
   text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .stat-mini-val { font-size: 16px; font-weight: 700; color: #333; }
 .stat-mini-label { font-size: 10px; color: #999; margin-top: 2px; }
 .stat-card {
-  background: #fff; border-radius: 12px; padding: 14px 12px;
+  background: var(--card); border-radius: 12px; padding: 14px 12px;
   display: flex; align-items: center; gap: 10px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.06);
 }
@@ -295,7 +295,7 @@ onMounted(() => { loadStats() })
 /* ── 图表卡片 ─────────────────────────── */
 .chart-card {
   margin: 0 16px 12px; padding: 14px; border-radius: 12px;
-  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .card-title {
   font-size: 13px; color: #666; margin: 0 0 10px;
@@ -311,7 +311,7 @@ onMounted(() => { loadStats() })
 /* ── Top 列表 ─────────────────────────── */
 .top-card {
   margin: 0 16px 12px; padding: 14px; border-radius: 12px;
-  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .top-list { display: flex; flex-direction: column; gap: 10px; }
 .top-item {
@@ -321,7 +321,7 @@ onMounted(() => { loadStats() })
 .top-item:last-child { border-bottom: none; }
 .top-num {
   width: 20px; height: 20px; border-radius: 50%;
-  background: rgba(155,58,42,0.1); color: var(--yanhong);
+  background: rgba(212,175,55,0.1); color: var(--yanhong);
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 700; flex-shrink: 0;
 }

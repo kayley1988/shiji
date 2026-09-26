@@ -228,7 +228,7 @@ const dailyRecommend = ref<any[]>([])
 async function loadData() {
   try {
     const recRes = await api.getExploreDaily()
-    const recData = recRes.data.data
+    const recData = recRes.data
     if (recData?.poems?.length) dailyRecommend.value = recData.poems
   } catch {}
 }
@@ -265,9 +265,9 @@ onMounted(loadData)
   border-radius: 1px;
   opacity: 0.4;
 }
-.header-bar.qinglu   { background: linear-gradient(to right, var(--cinnabar, #C73E3A), transparent); }
-.header-bar.shiliu   { background: linear-gradient(to right, var(--cinnabar, #C73E3A), transparent); }
-.header-bar.zheshi    { background: linear-gradient(to right, var(--cinnabar, #C73E3A), transparent); }
+.header-bar.qinglu   { background: linear-gradient(to right, var(--cinnabar, #D4AF37), transparent); }
+.header-bar.shiliu   { background: linear-gradient(to right, var(--cinnabar, #D4AF37), transparent); }
+.header-bar.zheshi    { background: linear-gradient(to right, var(--cinnabar, #D4AF37), transparent); }
 
 /* ═══ A. 品牌区 ════════════════════════════════════════ */
 .section-brand {
@@ -310,16 +310,16 @@ onMounted(loadData)
 }
 .today-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 20px rgba(199,62,58,0.1);
-  border-color: var(--cinnabar, #C73E3A);
+  box-shadow: 0 4px 20px rgba(212,175,55,0.1);
+  border-color: var(--cinnabar, #D4AF37);
 }
 .today-badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: var(--cinnabar, #C73E3A);
-  background: rgba(199,62,58,0.1);
+  color: var(--cinnabar, #D4AF37);
+  background: rgba(212,175,55,0.1);
   padding: 3px 12px;
   border-radius: var(--radius-full);
   margin-bottom: 12px;
@@ -359,7 +359,7 @@ onMounted(loadData)
 }
 .game-card.primary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 5px 20px rgba(199,62,58,0.2);
+  box-shadow: 0 5px 20px rgba(212,175,55,0.2);
 }
 .game-card.primary .game-icon-wrap {
   background: rgba(255,255,255,0.15);
@@ -388,11 +388,11 @@ onMounted(loadData)
 }
 .game-card.secondary:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 16px rgba(199,62,58,0.12);
+  box-shadow: 0 4px 16px rgba(212,175,55,0.12);
 }
 .game-card.secondary .game-icon-wrap {
   background: var(--paper-warm, #F5F1E8);
-  color: var(--cinnabar, #C73E3A);
+  color: var(--cinnabar, #D4AF37);
   margin-bottom: 10px;
 }
 .game-card.secondary .game-title {
@@ -457,13 +457,13 @@ onMounted(loadData)
 }
 .challenge-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(199,62,58,0.12);
+  box-shadow: 0 8px 28px rgba(212,175,55,0.12);
 }
-.challenge-card .hero-badge { background: rgba(199,62,58,0.1); color: var(--cinnabar, #C73E3A); }
+.challenge-card .hero-badge { background: rgba(212,175,55,0.1); color: var(--cinnabar, #D4AF37); }
 .challenge-card .hero-title { color: var(--ink-dark, #2C2C2C); }
 .challenge-card .hero-desc  { color: var(--ink-light, #5A5A5A); }
-.challenge-card .hero-cta   { color: var(--cinnabar, #C73E3A); }
-.challenge-card .hero-icon   { color: var(--cinnabar, #C73E3A); }
+.challenge-card .hero-cta   { color: var(--cinnabar, #D4AF37); }
+.challenge-card .hero-icon   { color: var(--cinnabar, #D4AF37); }
 
 /* 中国传统色 — 朱砂主题 */
 .color-card {
@@ -476,13 +476,13 @@ onMounted(loadData)
 }
 .color-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 28px rgba(199,62,58,0.15);
+  box-shadow: 0 8px 28px rgba(212,175,55,0.15);
 }
-.color-card .hero-badge { background: var(--cinnabar, #C73E3A); color: #fff; }
+.color-card .hero-badge { background: var(--cinnabar, #D4AF37); color: #fff; }
 .color-card .hero-title { color: var(--ink-dark, #2C2C2C); }
 .color-card .hero-desc  { color: var(--ink-light, #5A5A5A); }
-.color-card .hero-cta   { color: var(--cinnabar, #C73E3A); }
-.color-card .hero-icon  { color: var(--cinnabar, #C73E3A); }
+.color-card .hero-cta   { color: var(--cinnabar, #D4AF37); }
+.color-card .hero-icon  { color: var(--cinnabar, #D4AF37); }
 
 .hero-content {
   position: relative;
@@ -538,11 +538,11 @@ onMounted(loadData)
 .sub-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
-  color: var(--cinnabar, #C73E3A);
-  border-color: var(--cinnabar, #C73E3A);
+  color: var(--cinnabar, #D4AF37);
+  border-color: var(--cinnabar, #D4AF37);
 }
 .sub-card .van-icon { color: var(--ink-mist, #7A8A8A); transition: color 0.2s; }
-.sub-card:hover .van-icon { color: var(--cinnabar, #C73E3A); }
+.sub-card:hover .van-icon { color: var(--cinnabar, #D4AF37); }
 
 /* ═══ D. 雅集对战 ═══════════════════════════════════════ */
 .section-battle { padding: 0 16px 28px; }
@@ -568,11 +568,11 @@ onMounted(loadData)
   box-shadow: 0 3px 10px rgba(44,44,44,0.06);
 }
 .battle-card.create-card:hover {
-  box-shadow: 0 6px 24px rgba(199,62,58,0.12);
+  box-shadow: 0 6px 24px rgba(212,175,55,0.12);
 }
 .battle-card.create-card .battle-icon-wrap {
   background: var(--paper-warm, #F5F1E8);
-  color: var(--cinnabar, #C73E3A);
+  color: var(--cinnabar, #D4AF37);
 }
 .battle-card.create-card .battle-title { color: var(--ink-dark, #2C2C2C); }
 
@@ -583,13 +583,13 @@ onMounted(loadData)
   box-shadow: 0 3px 10px rgba(44,44,44,0.06);
 }
 .battle-card.join-card:hover {
-  box-shadow: 0 4px 18px rgba(199,62,58,0.12);
+  box-shadow: 0 4px 18px rgba(212,175,55,0.12);
 }
 .battle-card.join-card .battle-icon-wrap {
   background: var(--paper-warm, #F5F1E8);
-  color: var(--cinnabar, #C73E3A);
+  color: var(--cinnabar, #D4AF37);
 }
-.battle-card.join-card .battle-title { color: var(--cinnabar, #C73E3A); }
+.battle-card.join-card .battle-title { color: var(--cinnabar, #D4AF37); }
 
 .battle-icon-wrap {
   width: 48px;

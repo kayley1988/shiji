@@ -349,7 +349,7 @@ async function loadPoem(color: ChineseColor) {
       params: { color_name: color.name, limit: 5 }
     })
     if (res.data?.code === 200 && res.data?.data?.poems?.length) {
-      poemCache[color.name] = res.data.data.poems
+      poemCache[color.name] = res.data.poems
     }
   } catch (e) {
     console.warn(`[ColorPalette] 色·诗匹配失败: ${color.name}`, e)
@@ -655,7 +655,7 @@ async function openAi(color: ChineseColor) {
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  background: #fff;
+  background: var(--card);
 }
 
 /* 色块 */

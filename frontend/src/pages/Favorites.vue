@@ -187,7 +187,7 @@ async function removeTerm(item: any) {
 .poem-card {
   display: flex; align-items: center; gap: 8px;
   padding: 14px 16px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   margin-bottom: 10px;
@@ -203,7 +203,7 @@ async function removeTerm(item: any) {
 .term-card {
   display: flex; align-items: center; gap: 8px;
   padding: 12px 16px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   margin-bottom: 10px;
@@ -231,7 +231,7 @@ async function removeTerm(item: any) {
   color: var(--stone-light); font-size: 16px;
   border-radius: 50%; transition: all 0.15s;
 }
-.remove-btn:hover { background: rgba(155,58,42,0.1); color: var(--cinnabar); }
+.remove-btn:hover { background: rgba(212,175,55,0.1); color: var(--cinnabar); }
 
 /* 颜色网格 */
 .color-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }

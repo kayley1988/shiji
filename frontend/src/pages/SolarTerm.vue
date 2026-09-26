@@ -150,7 +150,7 @@ function goToPoem(poemId: string) {
 /* ── 意象卡片 ── */
 .section-card {
   margin: 0 16px 16px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   padding: 20px;
@@ -197,7 +197,7 @@ function goToPoem(poemId: string) {
 .poem-card {
   display: flex; align-items: center; gap: 12px;
   padding: 16px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   cursor: pointer;

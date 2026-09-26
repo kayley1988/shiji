@@ -433,7 +433,7 @@ async function leaveRoom() {
   align-items: center;
   justify-content: space-between;
   padding: 10px 0;
-  border-bottom: 1px dashed rgba(158,142,126,0.2);
+  border-bottom: 1px dashed var(--line);
 }
 .info-row:last-of-type { border-bottom: none; }
 
@@ -516,7 +516,7 @@ async function leaveRoom() {
   flex-direction: column;
   align-items: center;
   padding: 16px 8px;
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   transition: transform 0.2s, box-shadow 0.2s;
@@ -650,7 +650,7 @@ async function leaveRoom() {
   color: #fff !important;
   font-family: var(--font-display) !important;
   font-size: 18px !important;
-  box-shadow: 0 4px 20px rgba(155,58,42,0.35) !important;
+  box-shadow: 0 4px 20px rgba(212,175,55,0.35) !important;
 }
 .btn-start:disabled {
   background: var(--stone-light) !important;
@@ -690,7 +690,7 @@ async function leaveRoom() {
   align-items: center;
   gap: 14px;
   padding: 16px 4px;
-  border-bottom: 1px dashed rgba(158,142,126,0.2);
+  border-bottom: 1px dashed var(--line);
   margin-bottom: 16px;
 }
 .cp-avatar {
@@ -767,7 +767,7 @@ async function leaveRoom() {
   padding: 0 16px;
 }
 .score-list {
-  background: #fff;
+  background: var(--card);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   overflow: hidden;

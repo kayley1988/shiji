@@ -755,7 +755,7 @@ onUnmounted(() => {
 }
 
 .tag-easy { background: #e8f5e9; color: #4caf50; }
-.tag-medium { background: #fff3e0; color: #ff9800; }
+.tag-medium { background: var(--card)3e0; color: #ff9800; }
 .tag-hard { background: #ffebee; color: #f44336; }
 .tag-vip { background: linear-gradient(135deg, #ffd700, #ffb300); color: #fff; }
 
@@ -794,7 +794,7 @@ onUnmounted(() => {
 }
 
 .keyword-chip.active {
-  background: #fff3e0;
+  background: var(--card)3e0;
   color: #ff9800;
   border-color: #ff9800;
 }
@@ -856,7 +856,7 @@ onUnmounted(() => {
 }
 
 .tail-hint {
-  background: #fff8e1;
+  background: var(--card)8e1;
   border-radius: 8px;
   padding: 12px 16px;
   margin-bottom: 16px;
@@ -1134,7 +1134,7 @@ onUnmounted(() => {
 }
 
 .wrong-item {
-  background: #fff3f3;
+  background: var(--card)3f3;
   border-radius: 8px;
   padding: 12px;
   margin-bottom: 12px;

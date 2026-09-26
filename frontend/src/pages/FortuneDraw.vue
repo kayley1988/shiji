@@ -106,7 +106,7 @@ async function doDraw() {
   loading.value = true
   try {
     const res = await api.getFortune(selectedMood.value)
-    fortune.value = res.data.data
+    fortune.value = res.data
   } catch {
     showToast('求签失败，请重试')
   } finally {

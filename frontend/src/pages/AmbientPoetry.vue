@@ -96,7 +96,7 @@ async function fetchPoem() {
   loading.value = true
   try {
     const res = await api.getAmbientPoem()
-    poem.value = res.data.data
+    poem.value = res.data
     solarTerm.value = poem.value.solar_term ? `· ${poem.value.solar_term}` : ''
     visibleCount.value = 4
   } catch (e) {

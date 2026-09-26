@@ -64,8 +64,8 @@
         <svg :viewBox="`0 0 ${curveW} ${curveH}`" class="curve-svg" preserveAspectRatio="none">
           <defs>
             <linearGradient id="curveGrad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="rgba(155,58,42,0.3)"/>
-              <stop offset="100%" stop-color="rgba(155,58,42,0)"/>
+              <stop offset="0%" stop-color="rgba(212,175,55,0.3)"/>
+              <stop offset="100%" stop-color="rgba(212,175,55,0)"/>
             </linearGradient>
           </defs>
           <path :d="areaPath" fill="url(#curveGrad)"/>
@@ -102,10 +102,10 @@
             font-size="9" fill="#9E8E7E" font-family="Noto Sans SC">
             {{ label }}
           </text>
-          <polygon :points="radarPoints" fill="rgba(155,58,42,0.25)"
+          <polygon :points="radarPoints" fill="rgba(212,175,55,0.25)"
             stroke="rgb(155,58,42)" stroke-width="2" stroke-linejoin="round"/>
           <circle v-for="(p, i) in radarCoords" :key="i"
-            :cx="p.x" :cy="p.y" r="3.5" fill="rgba(155,58,42,0.9)"/>
+            :cx="p.x" :cy="p.y" r="3.5" fill="rgba(212,175,55,0.9)"/>
         </svg>
       </div>
       <div class="radar-legend">
@@ -253,13 +253,13 @@ onMounted(async () => {
   try {
     // 获取基本信息（拦截器不 unwrap，res.data = Flask {code, data: {user}}
     const res = await api.getProfile()
-    user.value = res.data.data
-    authStore.user = res.data.data
+    user.value = res.data
+    authStore.user = res.data
     authStore.isLoggedIn = true
     // 获取详细统计
     try {
       const s = await api.getMyStats()
-      stats.value = s.data.data
+      stats.value = s.data
     } catch (e) {
       console.warn('获取统计失败', e)
     }
@@ -274,7 +274,7 @@ onMounted(async () => {
 
 .page-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 16px 20px; background: #fff;
+  padding: 16px 20px; background: var(--card);
 }
 .header-left, .header-right { width: 40px; }
 .header-left { cursor: pointer; }
@@ -283,7 +283,7 @@ onMounted(async () => {
 /* ── 用户卡片 ─────────────────────────── */
 .profile-card {
   margin: 16px; padding: 16px; border-radius: 12px;
-  background: #fff; display: flex; align-items: center; gap: 12px;
+  background: var(--card); display: flex; align-items: center; gap: 12px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 .avatar {
@@ -312,7 +312,7 @@ onMounted(async () => {
 .rank-progress { margin-top: 6px; display: flex; align-items: center; gap: 8px; }
 .progress-bar {
   flex: 1; height: 5px; border-radius: 3px;
-  background: rgba(155,58,42,0.12); overflow: hidden;
+  background: rgba(212,175,55,0.12); overflow: hidden;
 }
 .progress-fill {
   height: 100%; border-radius: 3px;
@@ -327,7 +327,7 @@ onMounted(async () => {
   margin: 0 16px 12px;
 }
 .stat-item {
-  background: #fff; border-radius: 10px; padding: 12px 8px;
+  background: var(--card); border-radius: 10px; padding: 12px 8px;
   text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .stat-value { font-size: 20px; font-weight: 700; color: #333; }
@@ -336,7 +336,7 @@ onMounted(async () => {
 /* ── 活跃曲线 ─────────────────────────── */
 .curve-card {
   margin: 0 16px 12px; padding: 14px; border-radius: 12px;
-  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .card-title {
   font-size: 13px; color: #666; margin: 0 0 10px;
@@ -353,7 +353,7 @@ onMounted(async () => {
 /* ── 雷达图 ─────────────────────────── */
 .radar-card {
   margin: 0 16px 12px; padding: 14px; border-radius: 12px;
-  background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  background: var(--card); box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .radar-wrap { display: flex; justify-content: center; }
 .radar-svg { width: 160px; height: 160px; }
@@ -364,7 +364,7 @@ onMounted(async () => {
 
 /* ── 链接 ─────────────────────────── */
 .link-list {
-  margin: 8px 16px; background: #fff; border-radius: 12px;
+  margin: 8px 16px; background: var(--card); border-radius: 12px;
   overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .link-item {

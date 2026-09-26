@@ -257,12 +257,12 @@ async function loadToday() {
   try {
     // 1. 获取今日主题（节气+意象）
     const themeRes = await api.getDailyTheme()
-    todayTheme.value = themeRes.data.data
+    todayTheme.value = themeRes.data
 
     // 2. 获取今日主打色列表（用 daily-theme keywords 匹配）
     const kw = todayTheme.value?.keywords?.[0] || '寒'
     const colorRes = await api.getColorPoems(kw, 5)
-    const colorData = colorRes.data.data
+    const colorData = colorRes.data
 
     // dailyColors 来自色·诗匹配 API（如果没有专门字段，从节气关键字派生）
     if (colorData?.colors?.length) {
@@ -301,7 +301,7 @@ async function loadToday() {
         top3.map(async (p: any) => {
           try {
             const detail = await api.getPoemDetail(p.id)
-            const d = detail.data.data
+            const d = detail.data
             const lines: any[] = d.lines || []
             return {
               ...p,

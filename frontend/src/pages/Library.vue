@@ -570,7 +570,7 @@ onMounted(() => {
   display: block;
   font-size: 24px;
   font-weight: 700;
-  color: var(--cinnabar, #C73E3A);
+  color: var(--cinnabar, #D4AF37);
   font-family: var(--font-display, serif);
 }
 
@@ -702,7 +702,7 @@ onMounted(() => {
   top: 8px;
   right: 8px;
   padding: 2px 8px;
-  background: rgba(199,62,58,0.85);
+  background: rgba(212,175,55,0.85);
   color: white;
   font-size: 10px;
   border-radius: 10px;
@@ -808,8 +808,8 @@ onMounted(() => {
 
 .theme-chip {
   padding: 8px 14px;
-  background: rgba(199,62,58,0.08);
-  color: var(--cinnabar, #C73E3A);
+  background: rgba(212,175,55,0.08);
+  color: var(--cinnabar, #D4AF37);
   border-radius: 20px;
   font-size: 13px;
   cursor: pointer;
@@ -817,7 +817,7 @@ onMounted(() => {
 }
 
 .theme-chip:active {
-  background: rgba(199,62,58,0.15);
+  background: rgba(212,175,55,0.15);
 }
 
 /* 诗人列表 */
@@ -854,7 +854,7 @@ onMounted(() => {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--cinnabar, #C73E3A), #a83230);
+  background: linear-gradient(135deg, var(--cinnabar, #D4AF37), #a83230);
   color: white;
   display: flex;
   align-items: center;

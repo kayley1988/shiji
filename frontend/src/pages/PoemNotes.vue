@@ -158,7 +158,7 @@ async function fetchNotes() {
   loading.value = true
   try {
     const res = await api.getPoemNotes()
-    notes.value = res.data.data.notes || []
+    notes.value = res.data.notes || []
   } catch (e) {
     showToast('加载失败，请重试')
   } finally {

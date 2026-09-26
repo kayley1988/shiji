@@ -273,7 +273,7 @@ const sectionIcons = ['🌿', '🏛', '✒️', '🌟']
 onMounted(async () => {
   try {
     const res = await api.getExploreFilters()
-    const d = res.data.data
+    const d = res.data
     if (d) {
       filters.dynasties = d.dynasties || []
       filters.imagery = d.imagery || []
@@ -304,7 +304,7 @@ async function fetchPoems(reset = false) {
       page: page.value,
       page_size: 20,
     })
-    const d = res.data.data
+    const d = res.data
     if (d) {
       if (reset) {
         poems.value = d.poems || []
@@ -353,7 +353,7 @@ async function openDetail(poem: any) {
   // 拉取完整内容
   try {
     const res = await api.getPoemDetail(poem.id)
-    const d = res.data.data
+    const d = res.data
     if (d) {
       currentPoem.value = {
         ...poem,
@@ -403,7 +403,7 @@ async function aiExplainPoem() {
       colorName: '',
       note: '',
     })
-    const d = res.data.data || {}
+    const d = res.data || {}
     const raw = d.content || ''
     authorName.value = d.author || poem.author || ''
     authorWorks.value = d.works || []
@@ -525,7 +525,7 @@ function viewAllByAuthor() {
 /* 列表 */
 .poem-list { padding: 8px 16px; display: flex; flex-direction: column; gap: 12px; }
 .poem-card {
-  background: #fff; border-radius: var(--radius-md);
+  background: var(--card); border-radius: var(--radius-md);
   padding: 14px 16px; cursor: pointer;
   box-shadow: var(--shadow-sm); transition: all 0.2s;
 }
@@ -623,7 +623,7 @@ function viewAllByAuthor() {
 }
 .timeline-card {
   display: inline-block;
-  background: #fff;
+  background: var(--card);
   border: 1px solid rgba(158,142,126,0.16);
   border-radius: 8px;
   padding: 8px 12px;
@@ -655,7 +655,7 @@ function viewAllByAuthor() {
   margin-top: 6px;
 }
 .work-card {
-  background: #fff;
+  background: var(--card);
   border: 1px solid rgba(158,142,126,0.16);
   border-radius: 8px;
   padding: 10px 12px;

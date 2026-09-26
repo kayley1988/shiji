@@ -140,7 +140,7 @@ async function loadMyColors() {
   loading.value = true
   try {
     const res = await api.getFavorites('poem')
-    const favs = res.data.data?.favorites || res.data.data || []
+    const favs = res.data?.favorites || res.data || []
 
     // 过滤出有颜色信息的收藏
     const colored = favs
@@ -190,7 +190,7 @@ onMounted(loadMyColors)
 /* ── 顶部 ─────────────────────────────── */
 .page-header {
   display: flex; justify-content: space-between; align-items: center;
-  padding: 16px 20px; background: #fff;
+  padding: 16px 20px; background: var(--card);
 }
 .header-left { width: 40px; cursor: pointer; }
 .header-title { font-size: 16px; font-weight: 600; color: var(--yanhong); }
@@ -202,7 +202,7 @@ onMounted(loadMyColors)
 }
 .stat-chip {
   display: flex; align-items: baseline; gap: 4px;
-  background: #fff; border-radius: 8px; padding: 6px 14px;
+  background: var(--card); border-radius: 8px; padding: 6px 14px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .sc-num { font-size: 20px; font-weight: 700; color: #333; }
@@ -215,7 +215,7 @@ onMounted(loadMyColors)
 }
 .spinner {
   width: 32px; height: 32px; border-radius: 50%;
-  border: 2px solid rgba(155,58,42,0.15);
+  border: 2px solid rgba(212,175,55,0.15);
   border-top-color: var(--yanhong);
   animation: spin 0.9s linear infinite;
 }

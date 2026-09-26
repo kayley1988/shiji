@@ -318,7 +318,7 @@ onMounted(async () => {
   loadingCards.value = true
   try {
     const res = await api.getPoetCards()
-    cards.value = res.data.data?.cards || []
+    cards.value = res.data?.cards || []
   } catch {
     cards.value = []
   } finally {
@@ -328,7 +328,7 @@ onMounted(async () => {
   // 预取飞花令关键字池（70 字），随机一个初始令字
   try {
     const kres = await api.getPracticeKeywords()
-    const kws = kres.data.data?.keywords || []
+    const kws = kres.data?.keywords || []
     if (kws.length) {
       feihuaKeywords.value = kws
       feihuaKeyword.value = kws[Math.floor(Math.random() * kws.length)]
@@ -403,7 +403,7 @@ async function sendMessage() {
       poet_id: currentCard.value.id,
       messages: messages.value.map(m => ({ role: m.role, content: m.content })),
     })
-    const reply = res.data.data?.reply || '（诗人沉默不语）'
+    const reply = res.data?.reply || '（诗人沉默不语）'
     messages.value.push({ role: 'assistant', content: reply })
   } catch {
     messages.value.push({ role: 'assistant', content: '（诗人暂时走神了，稍后再试）' })
@@ -422,7 +422,7 @@ async function startGroup() {
       topic: groupTopic.value.trim(),
       rounds: 1,
     })
-    const msgs = res.data.data?.messages || []
+    const msgs = res.data?.messages || []
     groupMessages.value = [...groupMessages.value, ...msgs]
     groupStarted.value = true
   } catch {
@@ -443,7 +443,7 @@ async function anotherRound() {
       rounds: 1,
       history: groupMessages.value.map(m => ({ poet_name: m.poet_name, content: m.content })),
     })
-    const msgs = res.data.data?.messages || []
+    const msgs = res.data?.messages || []
     groupMessages.value = [...groupMessages.value, ...msgs]
   } catch {
     // 忽略
@@ -474,7 +474,7 @@ async function startFeihua() {
       keyword: feihuaKeyword.value,
       exclude_lines: feihuaExclude.value,
     })
-    const msgs = res.data.data?.messages || []
+    const msgs = res.data?.messages || []
     feihuaMessages.value = [...feihuaMessages.value, ...msgs]
     msgs.forEach((m: FeihuaMsg) => {
       if (m.title && m.line) feihuaExclude.value.push(m.title + '|' + m.line)
@@ -616,7 +616,7 @@ function scrollFeihuaBottom() {
 }
 .poet-card {
   display: flex; align-items: center; gap: 14px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid rgba(158,142,126,0.16);
   border-radius: var(--radius-md);
   padding: 16px;
@@ -635,7 +635,7 @@ function scrollFeihuaBottom() {
   font-size: 32px;
   background: var(--parchment);
   border-radius: 50%;
-  border: 1px solid rgba(158,142,126,0.2);
+  border: 1px solid var(--line);
 }
 .poet-info { flex: 1; min-width: 0; }
 .poet-name-row { display: flex; align-items: baseline; gap: 8px; }
@@ -671,7 +671,7 @@ function scrollFeihuaBottom() {
   font-size: 24px;
   background: var(--parchment);
   border-radius: 50%;
-  border: 1px solid rgba(158,142,126,0.2);
+  border: 1px solid var(--line);
 }
 .group-header-avatar { font-size: 22px; }
 .chat-poet-info { flex: 1; min-width: 0; }
@@ -685,7 +685,7 @@ function scrollFeihuaBottom() {
   max-width: 82%;
   padding: 10px 14px;
   border-radius: var(--radius-md);
-  background: #fff;
+  background: var(--card);
   border: 1px solid rgba(158,142,126,0.14);
   box-shadow: var(--shadow-sm);
   position: relative;
@@ -717,12 +717,12 @@ function scrollFeihuaBottom() {
 }
 .chat-input {
   flex: 1;
-  border: 1px solid rgba(158,142,126,0.2);
+  border: 1px solid var(--line);
   border-radius: var(--radius-full);
   padding: 10px 16px;
   font-size: 14px; color: var(--ink);
   outline: none;
-  background: #fff;
+  background: var(--card);
 }
 .chat-input:focus { border-color: var(--cinnabar); }
 .chat-send {
@@ -748,7 +748,7 @@ function scrollFeihuaBottom() {
 .group-tab {
   flex: 1;
   border: 1px solid rgba(158,142,126,0.18);
-  background: #fff;
+  background: var(--card);
   color: var(--stone);
   border-radius: var(--radius-full);
   padding: 8px 0;
@@ -775,7 +775,7 @@ function scrollFeihuaBottom() {
   position: relative;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   padding: 12px 6px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid rgba(158,142,126,0.18);
   border-radius: var(--radius-md);
   cursor: pointer;
@@ -814,14 +814,14 @@ function scrollFeihuaBottom() {
   font-size: 18px;
   background: var(--parchment);
   border-radius: 50%;
-  border: 1px solid rgba(158,142,126,0.2);
+  border: 1px solid var(--line);
 }
 .group-msg-name { font-family: var(--font-display); font-size: 15px; color: var(--ink); }
 .group-msg-dynasty { font-size: 12px; color: var(--stone); }
 .group-msg .msg-speak { position: static; margin-left: auto; }
 .group-msg-bubble {
   padding: 12px 14px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid rgba(158,142,126,0.14);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
@@ -850,14 +850,14 @@ function scrollFeihuaBottom() {
 }
 .feihua-shuffle {
   border: 1px solid rgba(158,142,126,0.3);
-  background: #fff; color: var(--stone);
+  background: var(--card); color: var(--stone);
   border-radius: var(--radius-full);
   padding: 6px 14px; font-size: 13px; cursor: pointer;
 }
 .feihua-msg { margin-bottom: 18px; }
 .feihua-msg-body {
   padding: 12px 14px;
-  background: #fff;
+  background: var(--card);
   border: 1px solid rgba(158,142,126,0.14);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
