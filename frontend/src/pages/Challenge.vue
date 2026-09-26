@@ -1,0 +1,565 @@
+<template>
+  <div class="challenge-page bg-xuanzhi">
+
+    <!-- 顶部导航 -->
+    <header class="app-nav">
+      <button class="nav-back" @click="$router.back()">
+        <van-icon name="arrow-left" />
+      </button>
+      <span class="nav-title">题库闯关</span>
+      <span class="nav-right"></span>
+    </header>
+
+    <!-- ══ 维度选择页 ═══════════════════════════════ -->
+    <div v-if="phase === 'select'" class="phase-select animate-fadeUp">
+      <div class="select-intro">
+        <p class="intro-text">选择维度，开启你的诗词闯关之旅</p>
+      </div>
+
+      <!-- 朝代 -->
+      <div class="dim-section">
+        <div class="dim-label">
+          <van-icon name="clock-o" size="14" />
+          <span>朝代</span>
+          <span class="dim-hint">（必选）</span>
+        </div>
+        <div class="dim-chips">
+          <button
+            v-for="d in dimensions?.dynasties" :key="d.id"
+            class="dim-chip"
+            :class="{ active: selected.dynasty === d.id }"
+            @click="selected.dynasty = d.id"
+          >
+            <span class="chip-name">{{ d.name }}</span>
+            <span class="chip-desc">{{ d.desc }}</span>
+            <span class="chip-count">{{ d.count }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 派系 -->
+      <div class="dim-section" v-if="dimensions?.factions">
+        <div class="dim-label">
+          <van-icon name="friends-o" size="14" />
+          <span>诗人派系</span>
+          <span class="dim-hint">（可选）</span>
+        </div>
+        <div class="dim-chips grid-2">
+          <button
+            v-for="f in dimensions.factions" :key="f.id"
+            class="dim-chip small"
+            :class="{ active: selected.faction === f.id }"
+            @click="toggleChip('faction', f.id)"
+          >
+            <span class="chip-name">{{ f.name }}</span>
+            <span class="chip-poets">{{ f.poets?.join(' · ') }}</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 主题 -->
+      <div class="dim-section" v-if="dimensions?.themes">
+        <div class="dim-label">
+          <van-icon name="flag-o" size="14" />
+          <span>主题意象</span>
+          <span class="dim-hint">（可选）</span>
+        </div>
+        <div class="dim-chips wrap">
+          <button
+            v-for="t in dimensions.themes" :key="t.id"
+            class="dim-tag"
+            :class="{ active: selected.theme === t.id }"
+            @click="toggleChip('theme', t.id)"
+          >{{ t.name }}</button>
+        </div>
+      </div>
+
+      <!-- 形式 -->
+      <div class="dim-section" v-if="dimensions?.forms">
+        <div class="dim-label">
+          <van-icon name="orders-o" size="14" />
+          <span>诗歌形式</span>
+          <span class="dim-hint">（可选）</span>
+        </div>
+        <div class="dim-chips wrap">
+          <button
+            v-for="f in dimensions.forms" :key="f.id"
+            class="dim-tag"
+            :class="{ active: selected.form === f.id }"
+            @click="toggleChip('form', f.id)"
+          >{{ f.name }}</button>
+        </div>
+      </div>
+
+      <!-- 开始按钮 -->
+      <div class="start-area">
+        <van-button
+          type="primary"
+          block
+          round
+          :disabled="!selected.dynasty || starting"
+          :loading="starting"
+          class="start-btn"
+          @click="handleStart"
+        >
+          {{ starting ? '题库抽取中…' : (selected.dynasty ? '开始闯关' : '请先选择朝代') }}
+        </van-button>
+        <p class="start-tip" v-if="startError">{{ startError }}</p>
+      </div>
+    </div>
+
+    <!-- ══ 答题页 ═══════════════════════════════ -->
+    <div v-else-if="phase === 'playing'" class="phase-play animate-fadeUp">
+
+      <!-- 进度条 -->
+      <div class="play-progress">
+        <span class="pp-index">{{ currentIdx + 1 }}/{{ questions.length }}</span>
+        <div class="pp-bar">
+          <div class="pp-fill" :style="{ width: ((currentIdx + 1) / questions.length * 100) + '%' }"></div>
+        </div>
+        <span class="pp-score">✓ {{ answeredCount }}</span>
+      </div>
+
+      <!-- 当前题目 -->
+      <div class="q-card" v-if="currentQ">
+        <div class="q-meta">{{ currentQ.title }} · {{ currentQ.author }}</div>
+        <div class="q-verse">{{ currentQ.question }}</div>
+        <div class="q-hint">请填入□中的字</div>
+
+        <!-- 选项 -->
+        <div class="q-options">
+          <button
+            v-for="opt in currentQ.options" :key="opt"
+            class="q-opt"
+            :class="{
+              selected: selectedOpt === opt,
+              correct: showResult && opt === currentQ.answer,
+              wrong: showResult && selectedOpt === opt && opt !== currentQ.answer
+            }"
+            @click="selectOpt(opt)"
+            :disabled="showResult"
+          >{{ opt }}</button>
+        </div>
+
+        <!-- 结果反馈 -->
+        <div class="q-feedback" v-if="showResult">
+          <div class="feedback-correct" v-if="selectedOpt === currentQ.answer">
+            <van-icon name="passed" size="20" color="var(--jade)" />
+            <span>答对了！+5 经验</span>
+          </div>
+          <div class="feedback-wrong" v-else>
+            <van-icon name="cross" size="20" color="var(--cinnabar)" />
+            <span>正确答案是「{{ currentQ.answer }}」</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 操作按钮 -->
+      <div class="play-actions">
+        <van-button
+          v-if="!showResult"
+          type="primary"
+          block
+          round
+          :disabled="!selectedOpt"
+          class="confirm-btn"
+          @click="confirmAnswer"
+        >确认作答</van-button>
+        <van-button
+          v-else
+          type="default"
+          block
+          round
+          class="next-btn"
+          @click="nextQuestion"
+        >{{ currentIdx + 1 >= questions.length ? '查看成绩' : '下一题' }}</van-button>
+      </div>
+
+      <!-- 已答进度点 -->
+      <div class="q-dots">
+        <span
+          v-for="(q, i) in answers" :key="i"
+          class="q-dot"
+          :class="{
+            done: q.answer !== null,
+            correct: q.isCorrect === true,
+            wrong: q.isCorrect === false
+          }"
+        ></span>
+      </div>
+    </div>
+
+    <!-- ══ 结果页 ═══════════════════════════════ -->
+    <div v-else-if="phase === 'result'" class="phase-result animate-fadeUp">
+      <div class="result-card">
+        <div class="result-stars">
+          <span v-for="i in 3" :key="i" class="result-star" :class="{ filled: starCount >= i }">★</span>
+        </div>
+        <div class="result-score">{{ resultData.score }}分</div>
+        <div class="result-sub">答对 {{ resultData.correct }} / {{ resultData.total }} 题</div>
+        <div class="result-exp">+{{ resultData.exp_gain }} 经验值</div>
+      </div>
+
+      <!-- 答题回顾 -->
+      <div class="review-list">
+        <div
+          v-for="(r, i) in resultData.results" :key="i"
+          class="review-item"
+          :class="{ correct: r.correct, wrong: !r.correct }"
+        >
+          <div class="review-header">
+            <van-icon :name="r.correct ? 'passed' : 'cross'" size="16"
+              :color="r.correct ? 'var(--jade)' : 'var(--cinnabar)'" />
+            <span class="review-title">{{ r.title }} · {{ r.author }}</span>
+          </div>
+          <div class="review-q">{{ r.question }}</div>
+          <div class="review-ans">
+            <span v-if="!r.correct" class="review-wrong">你的答案：{{ r.user_answer || '（未作答）' }}</span>
+            <span class="review-correct">正确答案：{{ r.correct_answer }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-actions">
+        <van-button type="primary" block round class="retry-btn" @click="handleRetry">再来一局</van-button>
+        <van-button plain block round class="back-btn" @click="$router.back()">返回首页</van-button>
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div v-if="loading" class="page-loading">
+      <p>墨香徐来…</p>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { showToast } from 'vant'
+import { api } from '../api'
+
+
+// ── 类型 ──────────────────────────────────────
+interface Dynasty { id: string; name: string; desc: string; count: number }
+interface Faction  { id: string; name: string; poets: string[]; count: number }
+interface Theme   { id: string; name: string }
+interface Form    { id: string; name: string; desc?: string }
+
+interface Dimensions {
+  dynasties: Dynasty[]
+  factions: Faction[]
+  themes: Theme[]
+  forms: Form[]
+}
+
+interface Question {
+  poem_id: string
+  line_id: string
+  question: string
+  title: string
+  author: string
+  dynasty: string
+  options: string[]
+}
+
+interface Answer {
+  line_id: string
+  answer: string | null
+  isCorrect: boolean | null
+}
+
+const phase = ref<'select' | 'playing' | 'result'>('select')
+const loading = ref(false)
+const starting = ref(false)
+const startError = ref('')
+const dimensions = ref<Dimensions | null>(null)
+
+// 选择状态
+const selected = ref({ dynasty: '', faction: '', theme: '', form: '' })
+
+// 闯关数据
+const sessionId = ref('')
+const questions = ref<Question[]>([])
+const currentIdx = ref(0)
+const selectedOpt = ref('')
+const showResult = ref(false)
+const answers = ref<Answer[]>([])
+const resultData = ref<any>(null)
+
+// ── 计算 ──────────────────────────────────────
+const answeredCount = computed(() => answers.value.filter(a => a.answer !== null).length)
+const starCount = computed(() => {
+  if (!resultData.value) return 0
+  const pct = resultData.value.score
+  if (pct >= 90) return 3
+  if (pct >= 60) return 2
+  if (pct >= 30) return 1
+  return 0
+})
+
+// ── 加载维度 ──────────────────────────────────────
+onMounted(async () => {
+  loading.value = true
+  try {
+    const res = await api.getChallengeDimensions()
+    dimensions.value = res.data.data
+  } catch (e) {
+    showToast('加载失败，请重试')
+  } finally {
+    loading.value = false
+  }
+})
+
+// ── 切换 chip ──────────────────────────────────────
+function toggleChip(type: 'faction' | 'theme' | 'form', id: string) {
+  if (selected.value[type] === id) {
+    selected.value[type] = ''
+  } else {
+    selected.value[type] = id
+  }
+}
+
+// ── 开始闯关 ──────────────────────────────────────
+async function handleStart() {
+  if (!selected.value.dynasty) {
+    startError.value = '请先选择一个朝代'
+    return
+  }
+  starting.value = true
+  startError.value = ''
+  try {
+    const res = await api.startChallenge({
+      dynasty: selected.value.dynasty || undefined,
+      faction: selected.value.faction || undefined,
+      theme: selected.value.theme || undefined,
+      form: selected.value.form || undefined,
+      count: 10,
+    })
+    sessionId.value = res.data.data.session_id
+    questions.value = res.data.data.questions
+    answers.value = questions.value.map(q => ({ line_id: q.line_id, answer: null, isCorrect: null }))
+    currentIdx.value = 0
+    selectedOpt.value = ''
+    showResult.value = false
+    phase.value = 'playing'
+  } catch (e: any) {
+    startError.value = e?.response?.data?.error?.message || '启动失败，请换个维度试试'
+  } finally {
+    starting.value = false
+  }
+}
+
+// ── 选选项 ──────────────────────────────────────
+function selectOpt(opt: string) {
+  if (showResult.value) return
+  selectedOpt.value = opt
+}
+
+// ── 确认答案 ──────────────────────────────────────
+function confirmAnswer() {
+  if (!selectedOpt.value) return
+  showResult.value = true
+  const q = currentQ.value
+  const isCorrect = selectedOpt.value === q.answer
+  answers.value[currentIdx.value] = {
+    line_id: q.line_id,
+    answer: selectedOpt.value,
+    isCorrect,
+  }
+}
+
+// ── 下一题 ──────────────────────────────────────
+function nextQuestion() {
+  if (currentIdx.value + 1 >= questions.value.length) {
+    submitChallenge()
+  } else {
+    currentIdx.value++
+    selectedOpt.value = ''
+    showResult.value = false
+  }
+}
+
+// ── 提交闯关 ──────────────────────────────────────
+async function submitChallenge() {
+  loading.value = true
+  try {
+    const res = await api.submitChallenge({
+      session_id: sessionId.value,
+      answers: answers.value
+        .filter(a => a.answer !== null)
+        .map(a => ({ line_id: a.line_id, answer: a.answer as string })),
+    })
+    resultData.value = res.data.data
+    phase.value = 'result'
+  } catch (e) {
+    showToast('提交失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// ── 重玩 ──────────────────────────────────────
+function handleRetry() {
+  selected.value = { dynasty: '', faction: '', theme: '', form: '' }
+  questions.value = []
+  answers.value = []
+  currentIdx.value = 0
+  selectedOpt.value = ''
+  showResult.value = false
+  phase.value = 'select'
+}
+</script>
+
+<style scoped>
+.challenge-page { min-height: 100vh; padding-bottom: 40px; }
+
+/* ── 维度选择 ── */
+.phase-select { padding: 16px; }
+.select-intro { text-align: center; margin-bottom: 20px; }
+.intro-text { font-size: 14px; color: var(--stone); }
+
+.dim-section { margin-bottom: 24px; }
+.dim-label {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 14px; font-weight: 600; color: var(--ink);
+  margin-bottom: 12px;
+}
+.dim-hint { font-size: 12px; color: var(--stone); font-weight: 400; }
+
+/* 朝代 chips */
+.dim-chips { display: flex; flex-direction: column; gap: 10px; }
+.dim-chips.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dim-chips.wrap { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.dim-chip {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 16px; border-radius: 12px;
+  background: #fff; border: 1.5px solid rgba(158,142,126,0.2);
+  text-align: left; cursor: pointer; transition: all 0.2s;
+  box-shadow: 0 1px 6px rgba(92,64,32,0.07);
+}
+.dim-chip:hover { border-color: var(--cinnabar); }
+.dim-chip.active {
+  border-color: var(--cinnabar);
+  background: rgba(155,58,42,0.07);
+  box-shadow: 0 2px 10px rgba(155,58,42,0.15);
+}
+.dim-chip.small { flex-direction: column; align-items: flex-start; padding: 10px 14px; }
+.chip-name { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink); }
+.chip-desc { font-size: 12px; color: var(--stone); }
+.chip-count { margin-left: auto; font-size: 12px; color: var(--stone-light); }
+.chip-poets { font-size: 11px; color: var(--stone); }
+
+/* 主题/形式 tag */
+.dim-tag {
+  padding: 6px 14px; border-radius: 20px;
+  background: #fff; border: 1px solid rgba(158,142,126,0.25);
+  font-size: 13px; color: var(--ink); cursor: pointer; transition: all 0.2s;
+}
+.dim-tag:hover { border-color: var(--gold); color: var(--gold); }
+.dim-tag.active {
+  background: rgba(184,148,46,0.1);
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
+/* 开始按钮 */
+.start-area { margin-top: 28px; }
+.start-btn { height: 48px; font-size: 16px; }
+.start-tip { text-align: center; font-size: 13px; color: var(--cinnabar); margin-top: 8px; }
+
+/* ── 答题页 ── */
+.phase-play { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.play-progress { display: flex; align-items: center; gap: 10px; }
+.pp-index { font-size: 13px; color: var(--stone); width: 36px; }
+.pp-bar { flex: 1; height: 6px; background: rgba(158,142,126,0.2); border-radius: 3px; }
+.pp-fill { height: 100%; background: linear-gradient(90deg, var(--cinnabar), var(--gold)); border-radius: 3px; transition: width 0.4s; }
+.pp-score { font-size: 13px; color: var(--jade); width: 28px; text-align: right; }
+
+/* 题目卡 */
+.q-card {
+  background: #fff; border-radius: 16px; padding: 20px;
+  box-shadow: 0 2px 14px rgba(92,64,32,0.10);
+  display: flex; flex-direction: column; gap: 12px;
+}
+.q-meta { font-size: 12px; color: var(--stone); }
+.q-verse {
+  font-family: var(--font-serif); font-size: 22px; line-height: 1.8;
+  color: var(--ink); text-align: center; letter-spacing: 0.1em;
+}
+.q-hint { text-align: center; font-size: 13px; color: var(--stone); }
+
+.q-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.q-opt {
+  padding: 12px; border-radius: 10px;
+  background: rgba(245,240,232,0.7); border: 1.5px solid rgba(158,142,126,0.2);
+  font-family: var(--font-serif); font-size: 18px; color: var(--ink);
+  cursor: pointer; transition: all 0.2s; text-align: center;
+}
+.q-opt:hover { border-color: var(--cinnabar); background: rgba(155,58,42,0.05); }
+.q-opt.selected { border-color: var(--cinnabar); background: rgba(155,58,42,0.1); color: var(--cinnabar); }
+.q-opt.correct { border-color: var(--jade); background: rgba(61,107,74,0.12); color: var(--jade); }
+.q-opt.wrong { border-color: var(--cinnabar); background: rgba(155,58,42,0.08); color: var(--cinnabar); opacity: 0.7; }
+
+.q-feedback { text-align: center; padding: 8px 0; }
+.feedback-correct { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; color: var(--jade); }
+.feedback-wrong { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; color: var(--cinnabar); }
+
+/* 操作按钮 */
+.play-actions { margin-top: 4px; }
+.confirm-btn, .next-btn { height: 44px; font-size: 15px; }
+.confirm-btn:disabled { opacity: 0.5; }
+
+/* 答题点 */
+.q-dots { display: flex; justify-content: center; gap: 6px; margin-top: 8px; }
+.q-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(158,142,126,0.2); transition: all 0.2s; }
+.q-dot.done { background: var(--stone); }
+.q-dot.correct { background: var(--jade); }
+.q-dot.wrong { background: var(--cinnabar); }
+
+/* ── 结果页 ── */
+.phase-result { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+
+.result-card {
+  background: linear-gradient(135deg, rgba(155,58,42,0.1), rgba(184,148,46,0.06));
+  border-radius: 20px; padding: 28px 20px;
+  text-align: center; border: 1px solid rgba(155,58,42,0.15);
+  box-shadow: 0 4px 20px rgba(155,58,42,0.10);
+}
+.result-stars { display: flex; justify-content: center; gap: 6px; margin-bottom: 12px; }
+.result-star { font-size: 32px; color: rgba(158,142,126,0.2); transition: color 0.3s; }
+.result-star.filled { color: var(--gold); }
+.result-score { font-family: var(--font-display); font-size: 48px; color: var(--cinnabar); margin-bottom: 4px; }
+.result-sub { font-size: 14px; color: var(--stone); margin-bottom: 6px; }
+.result-exp { font-size: 14px; color: var(--gold); font-weight: 600; }
+
+/* 答题回顾 */
+.review-list { display: flex; flex-direction: column; gap: 10px; }
+.review-item {
+  background: #fff; border-radius: 12px; padding: 14px;
+  border-left: 3px solid; box-shadow: 0 1px 6px rgba(92,64,32,0.07);
+}
+.review-item.correct { border-color: var(--jade); }
+.review-item.wrong { border-color: var(--cinnabar); }
+.review-header { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.review-title { font-size: 12px; color: var(--stone); }
+.review-q { font-family: var(--font-serif); font-size: 16px; color: var(--ink); margin-bottom: 6px; }
+.review-ans { font-size: 12px; display: flex; flex-direction: column; gap: 2px; }
+.review-wrong { color: var(--cinnabar); }
+.review-correct { color: var(--jade); }
+
+.result-actions { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.retry-btn { height: 44px; font-size: 15px; }
+.back-btn { height: 44px; font-size: 15px; }
+
+/* 加载 */
+.page-loading { display: flex; align-items: center; justify-content: center; min-height: 60vh; font-family: var(--font-serif); font-size: 16px; color: var(--stone); }
+
+/* 动画 */
+.animate-fadeUp { animation: fadeSlideUp 0.3s ease-out; }
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+</style>

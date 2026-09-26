@@ -1,0 +1,311 @@
+/* ============================================
+   诗语雅集 — 水墨素雅 · 国风设计系统
+   配色：宣纸 / 墨色 / 朱砂 / 青瓷
+   ============================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=ZCOOL+XiaoWei&family=Noto+Sans+SC:wght@300;400;500&family=LXGW+WenKai&display=swap');
+
+/* ── 设计令牌 — 水墨素雅 ─────────────────────── */
+:root {
+  /* 核心配色 */
+  --ink-dark:     #2C2C2C;   /* 墨色 — 标题/主文字 */
+  --ink:         #3D3D3D;   /* 墨色 — 正文 */
+  --ink-light:   #5A5A5A;   /* 淡墨 — 次要文字 */
+  --ink-mist:    #7A8A8A;   /* 青瓷灰 — 辅助文字 */
+  
+  /* 朱砂强调色 */
+  --cinnabar:    #C73E3A;   /* 朱砂红 — 强调/按钮 */
+  --cinnabar-dark: #A83230; /* 深朱砂 */
+  --cinnabar-light: #E85A57; /* 浅朱砂 */
+  
+  /* 宣纸系 */
+  --paper:       #FAF8F3;   /* 宣纸米白 — 页面背景 */
+  --paper-warm:  #F5F1E8;   /* 暖色宣纸 */
+  --card:        #FFFFFF;   /* 糯米白 — 卡片背景 */
+  --card-hover:  #FDFCFA;   /* 卡片悬停 */
+  
+  /* 分割/边框 */
+  --line:        #E8E4DC;   /* 淡墨 — 分割线 */
+  --line-light:  #F0EDE6;   /* 极淡墨 — 边框 */
+  
+  /* 兼容旧名 */
+  --qinglu:       var(--cinnabar);
+  --qinglu-dark:  var(--cinnabar-dark);
+  --qinglu-light: var(--cinnabar-light);
+  --qinglu-mist:  var(--ink-mist);
+  --tree-green:   var(--cinnabar);
+  --gem-green:    var(--ink-dark);
+  --verdant:     var(--ink-dark);
+  --zheshi:      var(--cinnabar);
+  --jade:        var(--ink-mist);
+  --jade-light:   var(--line);
+  --gold:        var(--cinnabar);
+  --gold-light:   var(--cinnabar-light);
+  --celadon:     var(--ink-mist);
+  --parchment:   var(--paper);
+  --parchment-dark: var(--paper-warm);
+  --xuanzhi:     var(--paper);
+  --xuanzhi-alt: var(--paper-warm);
+  --xuanzhi-deep: var(--line);
+  --xuanzhi-mist: var(--line-light);
+  --bamboo-dark: var(--cinnabar);
+  --bamboo-main: var(--cinnabar);
+  --bamboo-pale: var(--card);
+  --bamboo-light: var(--ink-mist);
+  --bamboo-mist: var(--line-light);
+  --stone:       var(--ink-mist);
+  --stone-light: var(--line);
+  --xuan-paper:  var(--paper);
+
+  /* 字体 */
+  --font-display: 'ZCOOL XiaoWei', 'Noto Serif SC', serif;
+  --font-serif:   'LXGW WenKai', 'Noto Serif SC', 'FangSong', Georgia, serif;
+  --font-sans:   'Noto Sans SC', 'PingFang SC', sans-serif;
+
+  /* 阴影 — 水墨风 */
+  --shadow-sm:   0 1px 4px rgba(44,44,44,0.06);
+  --shadow-md:   0 2px 12px rgba(44,44,44,0.08);
+  --shadow-lg:   0 4px 24px rgba(44,44,44,0.1);
+  --shadow-qinglu: 0 2px 12px rgba(199,62,58,0.15), 0 1px 3px rgba(0,0,0,0.05);
+  --shadow-inset: inset 0 1px 3px rgba(44,44,44,0.06);
+
+  /* 圆角 */
+  --radius-sm:   4px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-full:  999px;
+
+  /* 过渡 */
+  --ease-out:    cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── 全局重置 ────────────────────────────────── */
+*, *::before, *::after {
+  margin: 0; padding: 0; box-sizing: border-box;
+}
+
+html, body {
+  font-family: var(--font-serif);
+  background: var(--paper);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  line-height: 1.6;
+}
+
+/* ── 滚动条美化 ──────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--paper); }
+::-webkit-scrollbar-thumb { 
+  background: var(--line); 
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover { background: var(--ink-mist); }
+
+/* ── 链接 ────────────────────────────────────── */
+a { 
+  color: var(--cinnabar); 
+  text-decoration: none;
+  transition: color 0.2s;
+}
+a:hover { color: var(--cinnabar-dark); }
+
+/* ── 选中文字 ────────────────────────────────── */
+::selection {
+  background: rgba(199,62,58,0.15);
+  color: var(--ink-dark);
+}
+
+/* ── 通用卡片 ────────────────────────────────── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--line-light);
+  transition: all 0.2s var(--ease-out);
+}
+.card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+/* ── 按钮基础样式 ────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s var(--ease-out);
+  border: none;
+}
+
+.btn-primary {
+  background: var(--cinnabar);
+  color: white;
+}
+.btn-primary:hover {
+  background: var(--cinnabar-dark);
+  box-shadow: var(--shadow-qinglu);
+}
+
+.btn-outline {
+  background: transparent;
+  border: 1px solid var(--cinnabar);
+  color: var(--cinnabar);
+}
+.btn-outline:hover {
+  background: var(--cinnabar);
+  color: white;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--ink-mist);
+}
+.btn-ghost:hover {
+  background: var(--line-light);
+  color: var(--ink);
+}
+
+/* ── 分割线 ──────────────────────────────────── */
+.divider {
+  height: 1px;
+  background: var(--line);
+  margin: 16px 0;
+}
+
+/* ── 文字省略 ────────────────────────────────── */
+.ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ellipsis-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ── 页面容器 ────────────────────────────────── */
+.page {
+  min-height: 100vh;
+  background: var(--paper);
+  padding-bottom: 80px;
+}
+
+/* ── Vant 组件覆盖 ───────────────────────────── */
+/* 主色调改为朱砂 */
+:root {
+  --van-primary-color: var(--cinnabar);
+  --van-text-color: var(--ink);
+  --van-text-color-2: var(--ink-light);
+  --van-text-color-3: var(--ink-mist);
+  --van-border-color: var(--line);
+  --van-background: var(--paper);
+  --van-background-2: var(--card);
+}
+
+/* 按钮 */
+.van-button--primary {
+  background: var(--cinnabar) !important;
+  border-color: var(--cinnabar) !important;
+}
+.van-button--primary:active {
+  background: var(--cinnabar-dark) !important;
+}
+
+/* Tab */
+.van-tab--active {
+  color: var(--cinnabar) !important;
+}
+.van-tabs__line {
+  background: var(--cinnabar) !important;
+}
+
+/* 搜索框 */
+.van-search__content {
+  background: var(--card);
+  border: 1px solid var(--line);
+}
+
+/* 标签 */
+.van-tag--primary {
+  background: rgba(199,62,58,0.1);
+  color: var(--cinnabar);
+}
+
+/* 弹出层 */
+.van-popup {
+  background: var(--card) !important;
+}
+
+/* 列表 */
+.van-cell {
+  background: var(--card);
+}
+
+/* ── 品牌标题 ────────────────────────────────── */
+.brand-title {
+  text-align: center;
+  padding: 32px 16px 16px;
+}
+
+.brand-name {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--ink-dark);
+  letter-spacing: 4px;
+}
+
+.brand-sub {
+  font-size: 13px;
+  color: var(--ink-mist);
+  margin-top: 4px;
+  letter-spacing: 2px;
+}
+
+/* ── 区块标题 ────────────────────────────────── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 12px;
+}
+
+.section-header .header-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink-dark);
+}
+
+.header-bar {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, var(--line), transparent);
+}
+
+/* ── 空状态 ──────────────────────────────────── */
+.empty-state {
+  text-align: center;
+  padding: 48px 16px;
+  color: var(--ink-mist);
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+.empty-state .empty-text {
+  font-size: 14px;
+}

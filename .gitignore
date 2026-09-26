@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+*.db
+*.db-shm
+*.db-wal
+.env
+
+# Node
+node_modules/
+frontend/dist/
+
+# Logs
+*.log
+
+# 大体积数据目录（按需单独备份）
+/data/
+/mysql_export/
+/poetry_data/
+/poetry_data_repo/
+
+# 归档区（历史临时脚本，不进版本库）
+/_archive/
+
+# 压缩包
+*.tar.gz
