@@ -3,7 +3,7 @@
     class="polaroid-card"
     :class="[style, { 'is-loading': loading, 'has-image': hasImage }]"
     :style="frameStyle"
-    @click="$emit('click', poem)"
+    @click="poem && $emit('click', poem)"
   >
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-overlay">
@@ -137,8 +137,6 @@ const difficultyText = computed(() => {
 
 // 边框样式
 const frameStyle = computed(() => {
-  const base = {}
-  
   if (props.style === 'vintage') {
     return {
       '--frame-bg': '#e8dcc8',

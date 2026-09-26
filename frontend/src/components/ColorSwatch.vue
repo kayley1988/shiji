@@ -13,7 +13,7 @@
     <!-- 分类 Tab -->
     <div class="category-tabs">
       <button
-        v-for="(name, key) in CATEGORY_NAMES"
+        v-for="(name, key) in CATEGORY_LABELS"
         :key="key"
         class="cat-tab"
         :class="{ active: activeCategory === key }"
@@ -106,7 +106,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { showToast } from 'vant'
-import { CHINESE_COLORS, CATEGORY_NAMES, type ChineseColor } from '../styles/chinese-colors'
+import { CHINESE_COLORS, CATEGORY_LABELS, type ChineseColor } from '../styles/chinese-colors'
 
 const activeCategory = ref<string>('red')
 const showPopup = ref(false)

@@ -61,7 +61,7 @@
                   · {{ poemCache[color.name][0].author }}
                 </p>
                 <p class="poem-keyword" v-if="poemCache[color.name].length > 1">
-                  <van-tag type="primary" size="small" plain>
+                  <van-tag type="primary" plain>
                     +{{ poemCache[color.name].length - 1 }} 首
                   </van-tag>
                   <span class="swipe-hint" @click="openFullscreen(color)">点击查看全部 →</span>
@@ -371,6 +371,7 @@ function onTabChange(tab: Category | string) {
 // ── 全屏诗集 ──────────────────────────────
 const fsVisible = ref(false)
 const fsColor = ref<ChineseColor | null>(null)
+const fsTextColor = computed(() => (fsColor.value ? getTextColor(fsColor.value.hex) : '#fff'))
 const fsPoems = ref<typeof poemCache[string]>([])
 const fsKeywords = ref<string[]>([])
 const fsSpeakingId = ref('')
@@ -439,7 +440,7 @@ function fsSpeak(poem: typeof fsPoems.value[0]) {
   }
 }
 
-async function fsFav(color: ChineseColor, poem: typeof fsPoems.value[0]) {
+async function fsFav(_color: ChineseColor, poem: typeof fsPoems.value[0]) {
   try {
     await api.put(`/me/favorites/poem/${poem.poem_id}`)
     fsFavSet.value.add(poem.poem_id)
@@ -541,13 +542,13 @@ onUnmounted(() => {
 async function toggleFav(color: ChineseColor) {
   const name = color.name
   try {
-    if (favoriteSet.has(name)) {
+    if (favoriteSet.value.has(name)) {
       await api.delete(`/me/favorites/color/${encodeURIComponent(name)}`)
-      favoriteSet.delete(name)
+      favoriteSet.value.delete(name)
       showToast('已取消收藏')
     } else {
       await api.put(`/me/favorites/color/${encodeURIComponent(name)}`)
-      favoriteSet.add(name)
+      favoriteSet.value.add(name)
       showToast('已收藏')
     }
   } catch {

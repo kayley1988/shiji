@@ -152,7 +152,7 @@ const form = reactive({
 onMounted(async () => {
   try {
     const res = await api.getDailyTheme()
-    availableKeywords.value = res.data?.keywords || ['春', '风', '月', '花', '雨']
+    availableKeywords.value = res.data?.data?.keywords || ['春', '风', '月', '花', '雨']
     form.keywords = [availableKeywords.value[0]]
   } catch {
     availableKeywords.value = ['春', '风', '月', '花', '雨', '雪', '秋', '冬']

@@ -258,29 +258,34 @@ def get_current_solar_term(date_str: str) -> dict:
         节气信息字典
     """
     month, day = int(date_str[:2]), int(date_str[3:])
-    
-    # 冬至特殊处理（跨年）
-    if month == 12:
-        dongzhi = next(st for st in SOLAR_TERMS if st['name'] == '冬至')
-        if (month > int(dongzhi['start_date'][:2]) or 
-            (month == int(dongzhi['start_date'][:2]) and 
-             day >= int(dongzhi['start_date'][3:]))):
-            return dongzhi
-    
-    # 从后往前找第一个满足 start_date <= 当前日期的节气
+
+    by_name = {st['name']: st for st in SOLAR_TERMS}
+    dongzhi = by_name['冬至']
+
+    # 1月跨年段：1/1-1/4 仍属冬至，1/5 起小寒，1/20 起大寒
+    if month == 1:
+        if day >= int(by_name['大寒']['start_date'][3:]):
+            return by_name['大寒']
+        if day >= int(by_name['小寒']['start_date'][3:]):
+            return by_name['小寒']
+        return dongzhi
+
+    # 12月：冬至起始日前仍属大雪
+    if month == 12 and day >= int(dongzhi['start_date'][3:]):
+        return dongzhi
+
+    # 常规段：从后往前找第一个 start_date <= 当前日期的节气
+    # （跳过跨年的冬至/小寒/大寒，上面已单独处理）
     for st in reversed(SOLAR_TERMS):
+        if st['name'] in ('冬至', '小寒', '大寒'):
+            continue
         st_month = int(st['start_date'][:2])
         st_day = int(st['start_date'][3:])
-        
-        # 特殊处理冬至（12月22日开始）
-        if st['name'] == '冬至':
-            continue
-            
         if month > st_month or (month == st_month and day >= st_day):
             return st
-    
-    # 默认返回立春（年份开始时）
-    return next(st for st in SOLAR_TERMS if st['name'] == '立春')
+
+    # 兜底（正常不会走到）：立春
+    return by_name['立春']
 
 
 def get_solar_term_by_name(name: str) -> dict:

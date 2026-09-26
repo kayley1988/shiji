@@ -27,6 +27,7 @@ export interface Member {
   is_alive: boolean
   is_online: boolean
   seat_no?: number
+  score?: number
 }
 
 export interface Turn {
@@ -48,11 +49,6 @@ export const useRoomStore = defineStore('room', () => {
   function getMyUserId() {
     const authStore = useAuthStore()
     return authStore.user?.id
-  }
-
-  function getMyMember() {
-    const myId = getMyUserId()
-    return members.value.find(m => m.user_id === myId)
   }
 
   // ── 房间操作 ───────────────────────────────
@@ -90,8 +86,9 @@ export const useRoomStore = defineStore('room', () => {
   }
 
   async function startGame() {
+    if (!room.value) throw new Error('房间不存在')
     const myId = getMyUserId()
-    if (room.value?.host_user_id !== myId) throw new Error('只有房主可以开始')
+    if (room.value.host_user_id !== myId) throw new Error('只有房主可以开始')
     return api.startRoom(room.value.room_id!)
   }
 
@@ -100,7 +97,18 @@ export const useRoomStore = defineStore('room', () => {
     currentTurn.value = turn
   }
 
-  function handleGameFinished(data: any) {
+  function updateRoom(patch: Partial<Room>) {
+    room.value = { ...(room.value || ({} as Room)), ...patch }
+  }
+
+  function updateMembers(list: Member[]) {
+    members.value = list || []
+    const myId = getMyUserId()
+    const myMember = members.value.find(m => m.user_id === myId)
+    if (myMember) myRole.value = myMember.role
+  }
+
+  function handleGameFinished(_data: any) {
     currentTurn.value = null
     if (room.value) room.value.status = 'FINISHED'
   }
@@ -132,7 +140,7 @@ export const useRoomStore = defineStore('room', () => {
     room, members, currentTurn, myRole,
     isMyTurn, isHost,
     createRoom, joinRoom, fetchRoom, startGame,
-    setCurrentTurn, handleGameFinished,
+    setCurrentTurn, updateRoom, updateMembers, handleGameFinished,
     handleMemberJoined, handleMemberLeft,
     updateMemberStatus, reset,
   }

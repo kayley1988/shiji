@@ -45,10 +45,10 @@
         <button class="chat-back" @click="backToList">
           <van-icon name="arrow-left" />
         </button>
-        <div class="chat-poet-avatar">{{ currentCard.avatar }}</div>
+        <div class="chat-poet-avatar">{{ currentCard?.avatar }}</div>
         <div class="chat-poet-info">
-          <span class="chat-poet-name">{{ currentCard.name }}</span>
-          <span class="chat-poet-title">{{ currentCard.title }} · {{ currentCard.dynasty }}</span>
+          <span class="chat-poet-name">{{ currentCard?.name }}</span>
+          <span class="chat-poet-title">{{ currentCard?.title }} · {{ currentCard?.dynasty }}</span>
         </div>
       </div>
 

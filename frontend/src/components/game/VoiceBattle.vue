@@ -363,7 +363,7 @@ const props = withDefaults(defineProps<Props>(), {
 const phase = ref<'start' | 'playing' | 'result'>('start')
 
 // 模式选择
-const modes = [
+const modes: { id: 'keyword' | 'quote' | 'tail'; icon: string; name: string; desc: string }[] = [
   { id: 'keyword', icon: '🔥', name: '飞花令', desc: '说出含关键字的诗句' },
   { id: 'quote', icon: '💬', name: '接句', desc: 'AI出上句，你接下句' },
   { id: 'tail', icon: '🔗', name: '接尾', desc: '用指定字开头' }
@@ -415,14 +415,13 @@ const chineseVoices = ref<SpeechSynthesisVoice[]>([])
 const { transcript, isSupported: asrSupported, start: startASR, stop: stopASR, interimTranscript } = useSpeechRecognition()
 
 // 语音合成
-const { 
-  speak, 
-  stop: stopSpeak, 
-  isSpeaking, 
+const {
+  speak,
+  stop: stopSpeak,
+  isSpeaking,
   currentVoice,
   getChineseVoices,
-  selectVoice: selectTtsVoice,
-  previewVoice: previewTtsVoice
+  selectVoice: selectTtsVoice
 } = useSpeechSynthesis()
 
 // 计算属性
@@ -498,7 +497,7 @@ async function loadQuestion() {
   
   // 获取题目（优先后端 API）
   try {
-    const res = await api.v1.poetry.generate({
+    const res = await api.poetryGenerate({
       mode: selectedMode.value,
       keyword: selectedMode.value === 'keyword' ? selectedKeyword.value : '',
       difficulty: difficulty.value
@@ -525,7 +524,7 @@ async function loadQuestion() {
 // 本地题目生成
 function generateLocalQuestion() {
   const q = {
-    type: 'keyword' as const,
+    type: 'keyword' as 'keyword' | 'quote' | 'tail',
     keyword: selectedKeyword.value,
     prompt: `请说出包含「${selectedKeyword.value}」字的诗句`,
     quote: '',
@@ -1552,3 +1551,5 @@ onUnmounted(() => {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+</style>

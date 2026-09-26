@@ -224,7 +224,7 @@ const areaPath = computed(() => {
   })
   const last = arr.length - 1
   const lastX = (last / Math.max(last, 1)) * curveW
-  return `M${pts[0]} ${pts.slice(1).map(p => 'L' + p).join(' ')} L${lastX},${curveH} L0,${curveH} Z`
+  return `M${pts[0]} ${pts.slice(1).map((p: any) => 'L' + p).join(' ')} L${lastX},${curveH} L0,${curveH} Z`
 })
 
 // ── 工具 ──────────────────────────────

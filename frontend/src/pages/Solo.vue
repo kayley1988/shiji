@@ -291,7 +291,7 @@ async function loadMorePeek() {
 
 // ── 统计数据 ──────────────────────────────────
 const winRate = computed(() =>
-  totalRounds === 0 ? 0 : Math.round(correctCount.value / totalRounds * 100)
+  Math.round(correctCount.value / totalRounds * 100)
 )
 const finishTitle = computed(() => {
   const r = winRate.value

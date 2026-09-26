@@ -257,7 +257,7 @@ const canAnswer = computed(() => {
 })
 
 const sortedMembers = computed(() => {
-  return [...roomStore.members].sort((a, b) => b.score - a.score)
+  return [...roomStore.members].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
 })
 
 const timerClass = computed(() => {

@@ -182,6 +182,8 @@ function barH(count: number) {
 
 // 每日对局曲线
 const dailyGames = computed(() => data.value?.daily_games ?? [])
+const topVerses = computed<any[]>(() => data.value?.top_verses ?? [])
+const topAuthors = computed<any[]>(() => data.value?.top_authors ?? [])
 const todayGames = computed(() => {
   const today = dailyGames.value.find((d: any) => d.day === new Date().toISOString().slice(0, 10))
   return today?.count ?? 0

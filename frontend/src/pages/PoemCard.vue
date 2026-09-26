@@ -74,7 +74,7 @@
             :key="style.id"
             class="style-item"
             :class="{ active: selectedStyle === style.id }"
-            @click="selectedStyle = style.id"
+            @click="selectedStyle = style.id as any"
           >
             <div class="style-preview" :class="style.id">
               <span class="preview-char">{{ poem.title?.charAt(0) || '诗' }}</span>
@@ -101,7 +101,7 @@
               <img :src="artStyle.preview" :alt="artStyle.name" />
             </div>
             <span class="art-name">{{ artStyle.name }}</span>
-            <van-tag v-if="artStyle.isVip" type="warning" size="small">会员</van-tag>
+            <van-tag v-if="artStyle.isVip" type="warning">会员</van-tag>
           </div>
         </div>
 
@@ -200,7 +200,7 @@ const generatedImage = ref('')
 const isGenerating = ref(false)
 const showGenerateModal = ref(false)
 const showMore = ref(false)
-const selectedStyle = ref('classic')
+const selectedStyle = ref<'classic' | 'vintage' | 'ink' | 'modern'>('classic')
 const selectedArtStyle = ref('shuimo')
 const customPrompt = ref('')
 const quota = ref({ remaining: 3, daily_limit: 3 })
@@ -232,7 +232,7 @@ const moreActions = [
 const poemLines = computed(() => {
   if (!poem.value) return []
   const content = poem.value.full_text || poem.value.content
-  return content.split(/[，；。\n]/).filter(l => l.trim())
+  return content.split(/[，；。\n]/).filter((l: string) => l.trim())
 })
 
 // 初始化

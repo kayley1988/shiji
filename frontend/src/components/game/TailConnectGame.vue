@@ -237,8 +237,8 @@ const {
   isListening,
   transcript,
   error: voiceError,
-  startListening,
-  stopListening
+  start: startListening,
+  stop: stopListening
 } = useSpeechRecognition()
 
 // 监听语音输入

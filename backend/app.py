@@ -6,6 +6,7 @@
 
 """诗语雅集 - Flask 应用入口"""
 import json
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
@@ -30,6 +31,7 @@ from models import (
 from data.solar_terms import get_current_solar_term, SOLAR_TERMS
 from data.poems import INITIAL_POEMS
 from nlp.char_convert import to_simplified
+from services.utils import get_today_date_cn
 
 # Flask 应用
 app = Flask(__name__)
@@ -933,6 +935,7 @@ def init_data():
 #  徽章系统
 # ══════════════════════════════════════════════
 
+@app.route('/v1/badges', methods=['GET'])
 @app.route('/api/v1/badges', methods=['GET'])
 def get_badge_list():
     """获取所有徽章列表"""
@@ -955,6 +958,7 @@ def get_badge_list():
     })
 
 
+@app.route('/v1/users/<user_id>/badges', methods=['GET'])
 @app.route('/api/v1/users/<user_id>/badges', methods=['GET'])
 @require_auth
 def get_user_badges(user_id):
@@ -1055,12 +1059,14 @@ def check_and_award_badges(user_id: str, game_result: dict, db=None):
 # ══════════════════════════════════════════════════════
 # 练习 / Solo 模式
 # ══════════════════════════════════════════════════════
+@app.route('/v1/practice/keywords', methods=['GET'])
 @app.route('/api/v1/practice/keywords', methods=['GET'])
 def get_practice_keywords():
     """飞花令关键字池"""
     return jsonify({'data': {'keywords': FEIHUALING_KEYWORDS}})
 
 
+@app.route('/v1/practice/peek', methods=['GET'])
 @app.route('/api/v1/practice/peek', methods=['GET'])
 def peek_practice_lines():
     """查看含某关键字的所有诗句（分页，供「查看」功能）"""
@@ -1108,6 +1114,7 @@ def peek_practice_lines():
     }})
 
 
+@app.route('/v1/practice/lines', methods=['GET'])
 @app.route('/api/v1/practice/lines', methods=['GET'])
 def get_practice_lines():
     """获取练习诗句（按关键字过滤）"""
@@ -1155,6 +1162,7 @@ def get_practice_lines():
     }})
 
 
+@app.route('/v1/practice/validate', methods=['POST'])
 @app.route('/api/v1/practice/validate', methods=['POST'])
 def validate_practice_answer():
     """飞花令 Solo 验证：用户输入的诗句是否在数据库中（且含关键字）"""
@@ -1249,6 +1257,7 @@ def validate_practice_answer():
 # ══════════════════════════════════════════════════════
 # 诗词浏览 / 推荐
 # ══════════════════════════════════════════════════════
+@app.route('/v1/explore/daily', methods=['GET'])
 @app.route('/api/v1/explore/daily', methods=['GET'])
 def get_daily_recommend():
     """今日推荐：根据节气/节日智能推荐诗词"""
@@ -1325,6 +1334,7 @@ def get_daily_recommend():
     }})
 
 
+@app.route('/v1/explore/poems', methods=['GET'])
 @app.route('/api/v1/explore/poems', methods=['GET'])
 def explore_poems():
     """诗词浏览：支持按朝代/意象/作者筛选"""
@@ -1421,6 +1431,7 @@ def explore_poems():
     }})
 
 
+@app.route('/v1/explore/filters', methods=['GET'])
 @app.route('/api/v1/explore/filters', methods=['GET'])
 def get_explore_filters():
     """获取浏览页筛选条件：朝代、意象标签"""
@@ -1448,6 +1459,7 @@ def get_explore_filters():
 # ══════════════════════════════════════════════════════
 # AI 诗歌解读接口
 # ══════════════════════════════════════════════════════
+@app.route('/v1/ai/poem-explain', methods=['POST'])
 @app.route('/api/v1/ai/poem-explain', methods=['POST'])
 def ai_poem_explain():
     """深度解读一首诗：5 大板块 + 作者生平时间轴 + 作品集"""
@@ -1576,6 +1588,7 @@ def ai_poem_explain():
 # ══════════════════════════════════════════════════════
 # 诗人雅集（角色卡 + 角色扮演对话）
 # ══════════════════════════════════════════════════════
+@app.route('/v1/poet/cards', methods=['GET'])
 @app.route('/api/v1/poet/cards', methods=['GET'])
 def poet_cards():
     """返回诗人角色卡展示信息（不含人设 prompt）"""
@@ -1656,6 +1669,7 @@ def _search_poet_refs(author, messages):
         return ''
 
 
+@app.route('/v1/poet/chat', methods=['POST'])
 @app.route('/api/v1/poet/chat', methods=['POST'])
 def poet_chat():
     """与诗人角色卡对话（DeepSeek 角色扮演）"""
@@ -1745,6 +1759,7 @@ def _deepseek_reply(chat_messages, api_key, max_tokens=600, temperature=0.9):
     return result['choices'][0]['message']['content']
 
 
+@app.route('/v1/poet/roundtable', methods=['POST'])
 @app.route('/api/v1/poet/roundtable', methods=['POST'])
 def poet_roundtable():
     """多位诗人同席对谈：按顺序依次发言，后者可见前者发言"""
@@ -1825,6 +1840,7 @@ def poet_roundtable():
                         'data': {'topic': topic, 'messages': result_messages}})
 
 
+@app.route('/v1/poet/feihualing', methods=['POST'])
 @app.route('/api/v1/poet/feihualing', methods=['POST'])
 def poet_feihualing():
     """诗人飞花令：轮流接含令字的真实诗句（RAG 保证真实，AI 只生成引介语）"""
@@ -1911,14 +1927,44 @@ def poet_feihualing():
 
 
 
+# ============ 每日主题 ============
+def _get_daily_theme_data() -> dict:
+    """今日主题数据（节气 + 意象关键字），供 /v1/daily-theme 与静心诗境等共用"""
+    today = get_today_date_cn()
+    st = get_current_solar_term(today[5:])  # MM-DD
+    return {
+        'date': today,
+        'solar_term': {
+            'name': st['name'],
+            'season': st.get('season', ''),
+            'primary_element': st.get('primary_element', ''),
+            'description': st.get('description', ''),
+            'imagery': st.get('imagery', ''),
+        },
+        'keywords': st.get('keywords', []),
+    }
+
+
+@app.route('/v1/daily-theme', methods=['GET'])
+@app.route('/api/v1/daily-theme', methods=['GET'])
+def get_daily_theme_api():
+    """每日主题（节气 + 关键字）"""
+    try:
+        return jsonify({'code': 200, 'data': _get_daily_theme_data()})
+    except Exception as e:
+        logging.error(f"daily-theme error: {e}", exc_info=True)
+        return jsonify({'code': 500, 'message': '获取每日主题失败'}), 500
+
+
 # ============ 静心诗境 ============
+@app.route('/v1/poem/ambient', methods=['GET'])
 @app.route('/api/v1/poem/ambient', methods=['GET'])
 def get_ambient_poem():
     """静心诗境：取今日推荐诗，适合沉浸式慢读"""
     db = get_db()
     try:
         today = get_today_date_cn()
-        theme_data = get_daily_theme().get_json()['data']
+        theme_data = _get_daily_theme_data()
         
         # 随机取一首今日意象相关的诗
         kw = theme_data.get('keywords', [])
@@ -1992,6 +2038,7 @@ def get_ambient_poem():
 
 
 # ============ 诗签筒 ============
+@app.route('/v1/poem/fortune', methods=['GET'])
 @app.route('/api/v1/poem/fortune', methods=['GET'])
 def get_poem_fortune():
     """诗签筒：按心情取随机诗句"""
@@ -2052,6 +2099,7 @@ def get_poem_fortune():
 
 
 # ============ 私人诗摘 ============
+@app.route('/v1/poem/notes', methods=['GET'])
 @app.route('/api/v1/poem/notes', methods=['GET'])
 @require_auth
 def get_poem_notes():
@@ -2076,6 +2124,7 @@ def get_poem_notes():
         db.close()
 
 
+@app.route('/v1/poem/notes', methods=['POST'])
 @app.route('/api/v1/poem/notes', methods=['POST'])
 @require_auth
 def create_poem_note():
@@ -2111,6 +2160,7 @@ def create_poem_note():
         db.close()
 
 
+@app.route('/v1/poem/notes/<note_id>', methods=['PUT'])
 @app.route('/api/v1/poem/notes/<note_id>', methods=['PUT'])
 @require_auth
 def update_poem_note(note_id):
@@ -2147,6 +2197,7 @@ def update_poem_note(note_id):
         db.close()
 
 
+@app.route('/v1/poem/notes/<note_id>', methods=['DELETE'])
 @app.route('/api/v1/poem/notes/<note_id>', methods=['DELETE'])
 @require_auth
 def delete_poem_note(note_id):

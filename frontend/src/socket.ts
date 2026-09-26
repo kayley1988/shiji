@@ -110,6 +110,9 @@ class SocketClient {
   off(event: string, handler: (...args: any[]) => void) {
     this.socket?.off(event, handler)
   }
+  emit(event: string, payload?: any) {
+    this.socket?.emit(event, payload)
+  }
 }
 
 export const socket = new SocketClient()

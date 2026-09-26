@@ -260,6 +260,7 @@ interface Question {
   author: string
   dynasty: string
   options: string[]
+  answer: string
 }
 
 interface Answer {
@@ -281,6 +282,7 @@ const selected = ref({ dynasty: '', faction: '', theme: '', form: '' })
 const sessionId = ref('')
 const questions = ref<Question[]>([])
 const currentIdx = ref(0)
+const currentQ = computed<Question | null>(() => questions.value[currentIdx.value] ?? null)
 const selectedOpt = ref('')
 const showResult = ref(false)
 const answers = ref<Answer[]>([])
@@ -358,8 +360,9 @@ function selectOpt(opt: string) {
 // ── 确认答案 ──────────────────────────────────────
 function confirmAnswer() {
   if (!selectedOpt.value) return
-  showResult.value = true
   const q = currentQ.value
+  if (!q) return
+  showResult.value = true
   const isCorrect = selectedOpt.value === q.answer
   answers.value[currentIdx.value] = {
     line_id: q.line_id,

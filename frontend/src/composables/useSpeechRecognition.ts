@@ -80,7 +80,7 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i]
-        if (result.isFinal) {
+        if ((result as any).isFinal) {
           final += result[0].transcript
           confidence.value = result[0].confidence
         } else {
@@ -216,10 +216,10 @@ export function useSpeechRecognition(options: SpeechRecognitionOptions = {}) {
   }
 }
 
-// 类型声明
+// 类型声明（TS DOM lib 未内置 SpeechRecognition 时兜底）
 declare global {
   interface Window {
-    SpeechRecognition: typeof SpeechRecognition
-    webkitSpeechRecognition: typeof SpeechRecognition
+    SpeechRecognition: any
+    webkitSpeechRecognition: any
   }
 }
