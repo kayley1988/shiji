@@ -28,5 +28,3 @@ frontend/dist/
 # Vite 临时文件
 frontend/vite.config.ts.timestamp-*.mjs
 
-# Vite 临时文件
-frontend/vite.config.ts.timestamp-*.mjs
