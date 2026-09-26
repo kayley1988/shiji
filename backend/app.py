@@ -2260,11 +2260,13 @@ def handle_exception(e):
     return jsonify({'error': 'SERVER_ERROR', 'message': '请求处理失败'}), 500
 
 
-# ============ 题库闯关 ============
+# ============ 题库闯关（数据库版，745k 已审核诗句）============
 
 import random as _random
+from functools import lru_cache as _lru
+from sqlalchemy import text as _sqltext
 
-# 派系 → 诗人映射（基于 INITIAL_POEMS 现有作者）
+# 派系 → 诗人映射
 CHALLENGE_FACTIONS = {
     'shanshui':  {'name': '山水田园', 'poets': ['王维', '孟浩然', '柳宗元']},
     'biansai':   {'name': '边塞征战', 'poets': ['王昌龄', '王之涣', '王翰']},
@@ -2272,96 +2274,141 @@ CHALLENGE_FACTIONS = {
     'chenyu':    {'name': '沉郁现实', 'poets': ['杜甫', '李绅', '张继']},
     'yongshi':   {'name': '咏史抒怀', 'poets': ['杜牧', '李商隐', '骆宾王']},
 }
-# 主题意象（从诗句 tags 中筛选的意象字）
-CHALLENGE_THEMES = ['月', '山', '水', '春', '花', '江', '夜', '思', '雪', '酒']
 
 challenge_sessions = {}   # session_id -> {'questions': [...]}
 
 
-def _poem_pid(p):
-    """用标题做稳定 poem_id"""
-    return 'p%08x' % (abs(hash(p['title'])) % 0xFFFFFFFF)
+@_lru(maxsize=1)
+def _db_author_map():
+    """简体作者名 -> 库中原始写法集合（处理繁体：王維→王维）"""
+    db = Session()
+    rows = db.execute(_sqltext("SELECT DISTINCT author FROM poems")).fetchall()
+    db.close()
+    m = {}
+    for (a,) in rows:
+        if a:
+            m.setdefault(to_simplified(a), set()).add(a)
+    return m
 
 
-def _filter_poems(dynasty=None, faction=None, theme=None, form=None):
-    pool = list(INITIAL_POEMS)
-    if dynasty:
-        pool = [p for p in pool if p['dynasty'] == dynasty]
-    if faction:
-        poets = set(CHALLENGE_FACTIONS.get(faction, {}).get('poets', []))
-        pool = [p for p in pool if p['author'] in poets]
-    if theme:
-        pool = [p for p in pool if any(theme in l.get('tags', []) for l in p['lines'])]
-    if form:
-        size = {'绝句': 4, '律诗': 8}.get(form)
-        if size:
-            pool = [p for p in pool if len(p['lines']) == size]
-    return pool
+def _resolve_poets(names):
+    """把简体诗人名解析成库中的原始写法列表"""
+    amap = _db_author_map()
+    out = []
+    for n in names:
+        out.extend(amap.get(n, []))
+    return out
+
+
+@_lru(maxsize=1)
+def _db_form_counts():
+    """诗歌形式分布（行数 → 诗数），进程内缓存"""
+    db = Session()
+    rows = db.execute(_sqltext(
+        "SELECT cnt, COUNT(*) FROM (SELECT poem_id, COUNT(*) cnt FROM poem_lines GROUP BY poem_id) GROUP BY cnt"
+    )).fetchall()
+    db.close()
+    return dict(rows)
 
 
 @app.route('/v1/challenge/dimensions', methods=['GET'])
 def challenge_dimensions():
-    """题库维度：朝代 / 派系 / 主题意象 / 诗歌形式"""
-    dynasties, seen = [], set()
-    for p in INITIAL_POEMS:
-        if p['dynasty'] not in seen:
-            seen.add(p['dynasty'])
-            dynasties.append({
-                'id': p['dynasty'], 'name': p['dynasty'],
-                'desc': f"{p['dynasty']}诗", 'count': 0,
-            })
-    for d in dynasties:
-        d['count'] = sum(1 for p in INITIAL_POEMS if p['dynasty'] == d['id'])
+    """题库维度：朝代 / 派系 / 主题意象 / 诗歌形式（实时查库）"""
+    db = Session()
+    try:
+        dynasties = [{'id': r[0], 'name': r[0], 'desc': f'{r[0]}诗', 'count': r[1]}
+                     for r in db.execute(_sqltext(
+            "SELECT dynasty, COUNT(*) FROM poems WHERE dynasty IS NOT NULL AND dynasty != '' "
+            "GROUP BY dynasty ORDER BY COUNT(*) DESC")).fetchall()]
 
-    factions = []
-    for fid, info in CHALLENGE_FACTIONS.items():
-        poets = [a for a in info['poets'] if any(p['author'] == a for p in INITIAL_POEMS)]
+        # 派系：只保留库中真实存在的诗人（自动处理繁简体）
+        factions = []
+        for fid, info in CHALLENGE_FACTIONS.items():
+            found = sorted(_resolve_poets(info['poets']))
+            if found:
+                factions.append({'id': fid, 'name': info['name'],
+                                 'poets': [to_simplified(p) for p in found]})
+
+        themes = [{'id': r[0], 'name': r[0]} for r in db.execute(_sqltext(
+            "SELECT t.name, COUNT(*) c FROM poem_line_tags plt "
+            "JOIN tags t ON t.id = plt.tag_id WHERE t.type = 'scene' "
+            "GROUP BY t.name ORDER BY c DESC LIMIT 12")).fetchall()]
+
+        counts = _db_form_counts()
+        forms = []
+        for size, label in ((4, '绝句'), (8, '律诗')):
+            if counts.get(size):
+                forms.append({'id': label, 'name': label, 'count': counts[size]})
+        return jsonify({'data': {
+            'dynasties': dynasties, 'factions': factions,
+            'themes': themes, 'forms': forms,
+        }})
+    finally:
+        db.close()
+
+
+def _db_filter_sql(dynasty=None, faction=None, theme=None, form=None):
+    """构造按维度过滤 poems 的 WHERE 子句与参数"""
+    where, params = [], {}
+    if dynasty:
+        where.append("p.dynasty = :dynasty")
+        params['dynasty'] = dynasty
+    if faction:
+        poets = _resolve_poets(CHALLENGE_FACTIONS.get(faction, {}).get('poets', []))
         if poets:
-            factions.append({'id': fid, 'name': info['name'], 'poets': poets})
-
-    themes = []
-    for t in CHALLENGE_THEMES:
-        cnt = sum(1 for p in INITIAL_POEMS if any(t in l.get('tags', []) for l in p['lines']))
-        if cnt:
-            themes.append({'id': t, 'name': t})
-
-    forms = [{'id': '绝句', 'name': '绝句'}] \
-        if any(len(p['lines']) == 4 for p in INITIAL_POEMS) else []
-
-    return jsonify({'data': {
-        'dynasties': dynasties,
-        'factions': factions,
-        'themes': themes,
-        'forms': forms,
-    }})
+            ph = ','.join(':fp%d' % i for i in range(len(poets)))
+            where.append(f"p.author IN ({ph})")
+            params.update({'fp%d' % i: p for i, p in enumerate(poets)})
+    if theme:
+        where.append(
+            "EXISTS (SELECT 1 FROM poem_lines pl JOIN poem_line_tags plt ON plt.poem_line_id = pl.id "
+            "JOIN tags t ON t.id = plt.tag_id WHERE pl.poem_id = p.id AND t.name = :theme)")
+        params['theme'] = theme
+    if form:
+        size = {'绝句': 4, '律诗': 8}.get(form)
+        if size:
+            where.append("(SELECT COUNT(*) FROM poem_lines pl3 WHERE pl3.poem_id = p.id) = :nlines")
+            params['nlines'] = size
+    return where, params
 
 
-def _gen_question(p, idx, all_lines, own_lines, all_titles):
-    """生成一道题：非末句考「下一句」，末句考「出自哪首诗」"""
-    line = p['lines'][idx]
-    line_id = f"{_poem_pid(p)}-{idx}"
-    if idx < len(p['lines']) - 1:
-        answer = p['lines'][idx + 1]['content']
-        q_text = f"「{line['content']}」，下一句是？"
-        cands = [c for c in all_lines
-                 if c != answer and c not in own_lines
-                 and abs(len(c) - len(answer)) <= 3]
-        distractors = _random.sample(cands, min(3, len(cands)))
+def _db_fetch_lines(db, poem_id):
+    return [r[1] for r in db.execute(_sqltext(
+        "SELECT line_no, content FROM poem_lines WHERE poem_id = :pid AND review_status = 'APPROVED' "
+        "ORDER BY CAST(line_no AS INTEGER)"), {'pid': poem_id}).fetchall()]
+
+
+def _db_gen_question(db, poem_row, distractor_pool, title_pool):
+    """一道题：随机取诗的一句（非末句考下一句，末句考出处）"""
+    pid, title, author, dynasty = poem_row
+    lines = _db_fetch_lines(db, pid)
+    if len(lines) < 2:
+        return None
+    s_title, s_author = to_simplified(title), to_simplified(author)
+    own = [to_simplified(l) for l in lines]
+
+    idx = _random.randrange(len(lines) - 1) if len(lines) > 2 and _random.random() < 0.8 else len(lines) - 1
+    if idx < len(lines) - 1:
+        answer = own[idx + 1]
+        q_text = f"「{own[idx]}」，下一句是？"
+        cands = [c for c in distractor_pool
+                 if c != answer and c not in own and abs(len(c) - len(answer)) <= 3]
     else:
-        answer = p['title']
-        q_text = f"「{line['content']}」出自哪首诗？"
-        cands = [t for t in all_titles if t != answer]
-        distractors = _random.sample(cands, min(3, len(cands)))
+        answer = s_title
+        q_text = f"「{own[idx]}」出自哪首诗？"
+        cands = [t for t in title_pool if t != s_title]
 
-    options = distractors + [answer]
+    if len(cands) < 3:
+        return None
+    options = _random.sample(cands, 3) + [answer]
     _random.shuffle(options)
     return {
-        'poem_id': _poem_pid(p),
-        'line_id': line_id,
+        'poem_id': pid,
+        'line_id': f"{pid}-{idx}",
         'question': q_text,
-        'title': p['title'],
-        'author': p['author'],
-        'dynasty': p['dynasty'],
+        'title': s_title,
+        'author': s_author,
+        'dynasty': dynasty,
         'options': options,
         'answer': answer,
     }
@@ -2369,41 +2416,56 @@ def _gen_question(p, idx, all_lines, own_lines, all_titles):
 
 @app.route('/v1/challenge/start', methods=['POST'])
 def challenge_start():
-    """开始闯关：按维度抽题"""
+    """开始闯关：从数据库按维度抽题"""
     payload = request.get_json(silent=True) or {}
     try:
         count = min(int(payload.get('count', 10) or 10), 20)
     except (TypeError, ValueError):
         count = 10
-    pool = _filter_poems(
-        dynasty=payload.get('dynasty'),
-        faction=payload.get('faction'),
-        theme=payload.get('theme'),
-        form=payload.get('form'),
-    )
-    if not pool:
-        return jsonify({'error': 'NO_POEMS', 'message': '该维度下暂无诗句，请换个维度试试'}), 404
 
-    all_lines = [l['content'] for p in INITIAL_POEMS for l in p['lines']]
-    all_titles = [p['title'] for p in INITIAL_POEMS]
+    db = Session()
+    try:
+        where, params = _db_filter_sql(
+            dynasty=payload.get('dynasty'),
+            faction=payload.get('faction'),
+            theme=payload.get('theme'),
+            form=payload.get('form'),
+        )
+        wsql = (" WHERE " + " AND ".join(where)) if where else ""
+        base = f"FROM poems p{wsql}"
+        total = db.execute(_sqltext(f"SELECT COUNT(*) {base}"), params).scalar()
+        if not total:
+            return jsonify({'error': 'NO_POEMS', 'message': '该维度下暂无诗句，请换个维度试试'}), 404
 
-    # 出题候选：打乱 (诗, 句) 组合，一诗最多抽 2 句避免重复感
-    combos = [(p, i) for p in pool for i in range(len(p['lines']))]
-    _random.shuffle(combos)
-    per_poem = {}
-    questions = []
-    for p, i in combos:
-        if len(questions) >= count:
-            break
-        if per_poem.get(p['title'], 0) >= 2:
-            continue
-        per_poem[p['title']] = per_poem.get(p['title'], 0) + 1
-        own = [l['content'] for l in p['lines']]
-        questions.append(_gen_question(p, i, all_lines, own, all_titles))
+        # 抽诗（随机采样，数量冗余 3 倍以过滤单行诗）
+        fetch_n = min(count * 3, total)
+        rows = db.execute(_sqltext(
+            f"SELECT p.id, p.title, p.author, p.dynasty {base} ORDER BY RANDOM() LIMIT :n"),
+            {**params, 'n': fetch_n}).fetchall()
 
-    session_id = secrets.token_hex(16)
-    challenge_sessions[session_id] = {'questions': questions}
-    return jsonify({'data': {'session_id': session_id, 'questions': questions}})
+        # 干扰项池：随机诗句 + 随机诗题（简体化后使用）
+        raw_lines = [to_simplified(r[0]) for r in db.execute(_sqltext(
+            "SELECT content FROM poem_lines WHERE review_status = 'APPROVED' "
+            "AND LENGTH(content) BETWEEN 3 AND 20 ORDER BY RANDOM() LIMIT 400")).fetchall()]
+        raw_titles = [to_simplified(r[0]) for r in db.execute(_sqltext(
+            "SELECT title FROM poems ORDER BY RANDOM() LIMIT 200")).fetchall()]
+
+        questions = []
+        for row in rows:
+            if len(questions) >= count:
+                break
+            q = _db_gen_question(db, row, raw_lines, raw_titles)
+            if q:
+                questions.append(q)
+
+        if not questions:
+            return jsonify({'error': 'NO_POEMS', 'message': '该维度下暂时出不了题，请换个维度试试'}), 404
+
+        session_id = secrets.token_hex(16)
+        challenge_sessions[session_id] = {'questions': questions}
+        return jsonify({'data': {'session_id': session_id, 'questions': questions}})
+    finally:
+        db.close()
 
 
 @app.route('/v1/challenge/submit', methods=['POST'])

@@ -55,10 +55,48 @@ TRAD_TO_SIMP = {
     '闞': '阚',  '闡': '阐',  '闢': '辟',  '闥': '闼',
 }
 
+# ── OpenCC 全量表（项目内置，nlp/data/）───────────────────────
+# 内置 388 字映射太不全（缺 維/憶 等常用字），启动时尝试加载
+# OpenCC 官方 TSCharacters.txt（5062 字）+ TSPhrases.txt（487 词组）覆盖增强
+import os as _os
+
+_OPENCC_DIR = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), 'data')
+_FULL_CHAR = {}
+_FULL_PHRASE = {}
+
+try:
+    with open(_os.path.join(_OPENCC_DIR, 'TSCharacters.txt'), encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split('\t')
+            if len(parts) >= 2 and parts[1]:
+                _FULL_CHAR[parts[0]] = parts[1].split()[0]
+    with open(_os.path.join(_OPENCC_DIR, 'TSPhrases.txt'), encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            parts = line.split('\t')
+            if len(parts) >= 2 and parts[1]:
+                _FULL_PHRASE[parts[0]] = parts[1].split()[0]
+    # 合并：内置表优先级最低，全量表覆盖（更长的不对等映射取 OpenCC 第一候选）
+    _MERGED = dict(TRAD_TO_SIMP)
+    _MERGED.update(_FULL_CHAR)
+except Exception:  # 表文件缺失时退回内置表，不影响启动
+    _MERGED = dict(TRAD_TO_SIMP)
+    _FULL_PHRASE = {}
+
 
 def to_simplified(text: str) -> str:
-    """将繁体/异体字转换为简体"""
-    return ''.join(TRAD_TO_SIMP.get(c, c) for c in text)
+    """将繁体/异体字转换为简体（词组优先，再逐字）"""
+    if not text:
+        return text
+    for phrase, simp in _FULL_PHRASE.items():
+        if phrase in text:
+            text = text.replace(phrase, simp)
+    return ''.join(_MERGED.get(c, c) for c in text)
 
 
 def normalize_poetry_text(text: str) -> str:
