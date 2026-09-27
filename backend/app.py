@@ -153,8 +153,9 @@ def check_auth():
         if request.path.startswith(_prefix) and not _ai_feature_enabled(_feat):
             return jsonify({'code': 403, 'message': f'AI 功能「{AI_FEATURES[_feat]}」已在设置中关闭'}), 403
 
-    # 允许白名单路径
-    if any(request.path.startswith(p) for p in PUBLIC_PATHS):
+    # 允许白名单路径（/api/v1/* 与 /v1/* 别名共享同一份白名单：匹配前剥掉 /api 前缀）
+    _pub_path = request.path[4:] if request.path.startswith('/api/') else request.path
+    if any(_pub_path.startswith(p) for p in PUBLIC_PATHS):
         return None
     
     # 检查 Authorization header
@@ -2478,6 +2479,7 @@ def galaxy_author_poems():
         db.close()
 
 
+@app.route('/api/v1/challenge/dimensions', methods=['GET'])
 @app.route('/v1/challenge/dimensions', methods=['GET'])
 def challenge_dimensions():
     """题库维度：朝代 / 派系 / 主题意象 / 诗歌形式（实时查库）"""
@@ -2581,6 +2583,7 @@ def _db_gen_question(db, poem_row, distractor_pool, title_pool):
     }
 
 
+@app.route('/api/v1/challenge/start', methods=['POST'])
 @app.route('/v1/challenge/start', methods=['POST'])
 def challenge_start():
     """开始闯关：从数据库按维度抽题"""
@@ -2635,6 +2638,7 @@ def challenge_start():
         db.close()
 
 
+@app.route('/api/v1/challenge/submit', methods=['POST'])
 @app.route('/v1/challenge/submit', methods=['POST'])
 def challenge_submit():
     """提交闯关：服务端判分（不信任前端答案）"""
