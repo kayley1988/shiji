@@ -2435,30 +2435,37 @@ def galaxy_poets():
 @app.route('/api/v1/galaxy/poems', methods=['GET'])
 @app.route('/v1/galaxy/poems', methods=['GET'])
 def galaxy_author_poems():
-    """点星取某位作者的代表作（最多 5 首，各取前 4 句）"""
+    """点星取某位作者的代表作（最多 20 首，各取前 8 句并拼好标点）"""
     name = (request.args.get('author') or '').strip()
     if not name:
         return jsonify({'error': 'MISSING_AUTHOR', 'message': '缺少 author 参数'}), 400
     db = Session()
     try:
         rows = db.execute(_sqltext(
-            "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 5"),
+            "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 20"),
             {'a': name}).fetchall()
+        total = db.execute(_sqltext(
+            "SELECT COUNT(*) FROM poems WHERE author = :a"), {'a': name}).scalar()
         if not rows:
             for raw in _resolve_poets([name]):
                 rows = db.execute(_sqltext(
-                    "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 5"),
+                    "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 20"),
                     {'a': raw}).fetchall()
+                total = db.execute(_sqltext(
+                    "SELECT COUNT(*) FROM poems WHERE author = :a"), {'a': raw}).scalar()
                 if rows:
                     break
         out = []
         for pid, title in rows:
-            lines = db.execute(_sqltext(
+            lines = [r[0] for r in db.execute(_sqltext(
                 "SELECT content FROM poem_lines WHERE poem_id = :pid AND review_status = 'APPROVED' "
-                "ORDER BY line_no LIMIT 4"), {'pid': pid}).fetchall()
-            out.append({'id': pid, 'title': to_simplified(title),
-                        'lines': [to_simplified(l[0]) for l in lines]})
-        return jsonify({'data': {'author': to_simplified(name), 'poems': out}})
+                "ORDER BY line_no LIMIT 8"), {'pid': pid}).fetchall()]
+            simp = [to_simplified(l) for l in lines]
+            couplets = []
+            for i in range(0, len(simp), 2):
+                couplets.append('，'.join(simp[i:i + 2]) + '。')
+            out.append({'id': pid, 'title': to_simplified(title), 'lines': couplets})
+        return jsonify({'data': {'author': to_simplified(name), 'total': total, 'poems': out}})
     finally:
         db.close()
 

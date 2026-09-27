@@ -71,11 +71,15 @@
       <div class="panel-poems">
         <div v-if="poemsLoading" class="panel-tip">正在取诗…</div>
         <div v-else-if="!authorPoems.length" class="panel-tip">暂无已审核诗句</div>
-        <div v-for="(pm, i) in authorPoems" :key="i" class="poem" @click="pm.open = !pm.open">
+        <div v-for="(pm, i) in authorPoems" :key="i" class="poem">
           <div class="pt">{{ pm.title }}</div>
-          <div class="pc" :class="{ open: pm.open }">
+          <div class="pc">
             <div v-for="(ln, j) in pm.lines" :key="j">{{ ln }}</div>
+            <div v-if="!pm.lines.length" class="no-lines">暂无已审核诗句</div>
           </div>
+        </div>
+        <div v-if="authorTotal > authorPoems.length" class="panel-tip">
+          共 {{ authorTotal }} 首 · 已展示前 {{ authorPoems.length }} 首
         </div>
       </div>
     </div>
@@ -131,6 +135,7 @@ const sugIdx = ref(-1)
 const labelsOn = ref(false)
 const selected = ref<GalaxyPoet | null>(null)
 const authorPoems = ref<AuthorPoem[]>([])
+const authorTotal = ref(0)
 const poemsLoading = ref(false)
 const legend = ref<{ key: string; color: string; count: number }[]>([])
 
@@ -311,12 +316,14 @@ function onClick() {
 async function openPoet(p: GalaxyPoet, sprite: THREE.Sprite) {
   selected.value = p
   authorPoems.value = []
+  authorTotal.value = 0
   poemsLoading.value = true
   focusOn(sprite)
   try {
     const res: any = await api.getGalaxyAuthorPoems(p.id)
     if (selected.value && selected.value.id === p.id) {
       authorPoems.value = (res.data?.poems || []) as AuthorPoem[]
+      authorTotal.value = res.data?.total || 0
     }
   } catch {
     authorPoems.value = []
@@ -324,7 +331,7 @@ async function openPoet(p: GalaxyPoet, sprite: THREE.Sprite) {
     poemsLoading.value = false
   }
 }
-function closePanel() { selected.value = null; authorPoems.value = [] }
+function closePanel() { selected.value = null; authorPoems.value = []; authorTotal.value = 0 }
 
 function focusOn(sprite: THREE.Sprite) {
   if (!camera) return
@@ -675,18 +682,16 @@ onBeforeUnmount(() => {
 .panel-poems { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
 .panel-tip { font-size: 13px; color: var(--ink-mist, #847F6E); padding: 8px 0; }
 .poem {
-  padding: 10px 14px; border-radius: 10px; cursor: pointer;
+  padding: 10px 14px; border-radius: 10px;
   background: var(--card, #1E222B);
   border: 1px solid rgba(212, 175, 55, 0.18);
-  transition: border-color 0.2s;
 }
-.poem:hover { border-color: rgba(212, 175, 55, 0.5); }
 .poem .pt { font-size: 14px; font-weight: 600; color: var(--cinnabar-light, #E9CB6B); }
 .poem .pc {
-  display: none; margin-top: 8px;
-  font-size: 13px; line-height: 1.9; color: var(--ink, #D9D4C5);
+  margin-top: 8px;
+  font-size: 13px; line-height: 2.0; color: var(--ink, #D9D4C5);
 }
-.poem .pc.open { display: block; }
+.poem .pc .no-lines { color: var(--ink-mist, #847F6E); font-size: 12px; }
 
 /* 星名标签（非 scoped，动态创建） */
 .g-plabel {
