@@ -56,7 +56,7 @@
     </div>
 
     <!-- 底部操作提示 -->
-    <div class="g-hint">拖拽旋转 · 滚轮缩放 · WASD 穿越 · 点击星辰读诗</div>
+    <div class="g-hint">拖拽平移 · 滚轮缩放 · 拉近显示更多星名 · 点击星辰读诗</div>
 
     <!-- 悬停提示 -->
     <div ref="hoverTip" class="g-hover"></div>
@@ -114,13 +114,42 @@ const DYN_COLORS: Record<string, string> = {
   '元': '#C4756B',             // 绛陶
   '未知': '#8B8FA3'
 }
-// 朝代 → 时间带（内圈→外圈）
-const DYN_T: Record<string, [number, number]> = {
-  '唐': [0.08, 0.45],
-  '宋': [0.5, 0.72],
-  '元': [0.76, 0.98]
+// 朝代泳道（横轴）：laneY 为纵轴位置，范围用于无年表作者的分布
+const DYN_RANGES: Record<string, [number, number]> = {
+  '唐': [618, 907],
+  '宋': [960, 1279],
+  '元': [1271, 1368]
 }
-const ARMS = 3, TURNS = 2.4, INNER_R = 70, OUTER_R = 300, V_SPREAD = 130
+const LANE_Y: Record<string, number> = { '唐': 95, '宋': 0, '元': -95 }
+const X_LEFT = -440, X_RIGHT = 440        // 年代 600 → 1400 映射到横轴
+const YEAR_MIN = 600, YEAR_MAX = 1400
+
+// 名家年表（生年，近似）：有年表的按真实年代落位，无年表在朝代区间内抖动
+const KNOWN_YEARS: Record<string, number> = {
+  // 唐
+  '骆宾王': 619, '王勃': 650, '杨炯': 650, '卢照邻': 634, '陈子昂': 661,
+  '贺知章': 659, '张九龄': 678, '张若虚': 660, '王之涣': 688, '孟浩然': 689,
+  '王昌龄': 698, '王维': 701, '李白': 701, '高适': 704, '崔颢': 704,
+  '杜甫': 712, '岑参': 715, '钱起': 722, '刘长卿': 726, '韦应物': 737,
+  '卢纶': 739, '李益': 748, '孟郊': 751, '张继': 715, '韩愈': 768,
+  '刘禹锡': 772, '白居易': 772, '柳宗元': 773, '元稹': 779, '贾岛': 779,
+  '李贺': 790, '许浑': 791, '杜牧': 803, '温庭筠': 812, '李商隐': 813,
+  '皮日休': 834, '陆龟蒙': 830, '韦庄': 836, '罗隐': 833, '杜荀鹤': 846,
+  '韩偓': 842, '贯休': 832, '齐己': 863, '王建': 768, '张籍': 766,
+  '李颀': 690, '崔涂': 850, '秦韬玉': 840, '郑谷': 851, '吴融': 850,
+  // 宋
+  '范仲淹': 989, '张先': 990, '柳永': 984, '晏殊': 991, '梅尧臣': 1002,
+  '欧阳修': 1007, '苏洵': 1009, '曾巩': 1019, '王安石': 1021, '晏几道': 1038,
+  '苏轼': 1037, '苏辙': 1039, '黄庭坚': 1045, '秦观': 1049, '贺铸': 1052,
+  '周邦彦': 1056, '李清照': 1084, '岳飞': 1103, '陈与义': 1090, '杨万里': 1127,
+  '陆游': 1125, '范成大': 1126, '朱熹': 1130, '辛弃疾': 1140, '姜夔': 1155,
+  '刘克庄': 1187, '文天祥': 1236, '林逋': 967, '司马光': 1019, '米芾': 1051,
+  // 元
+  '关汉卿': 1220, '白朴': 1226, '王实甫': 1230, '马致远': 1250, '卢挚': 1242,
+  '刘因': 1249, '张养浩': 1270, '揭傒斯': 1274, '虞集': 1272, '萨都剌': 1272,
+  '贯云石': 1286, '张可久': 1280, '乔吉': 1280, '黄溍': 1277, '欧阳玄': 1283,
+  '王冕': 1287, '杨维桢': 1296, '乃贤': 1309, '郑光祖': 1260, '睢景臣': 1250
+}
 
 // ---------- 状态 ----------
 const canvasHost = ref<HTMLDivElement>()
@@ -132,7 +161,7 @@ const totalPoems = ref(0)
 const keyword = ref('')
 const suggests = ref<GalaxyPoet[]>([])
 const sugIdx = ref(-1)
-const labelsOn = ref(false)
+const labelsOn = ref(true)
 const selected = ref<GalaxyPoet | null>(null)
 const authorPoems = ref<AuthorPoem[]>([])
 const authorTotal = ref(0)
@@ -162,23 +191,19 @@ function rand(seed: string): number { return hash(seed) / HMAX }
 function dynColorOf(d?: string): string {
   return DYN_COLORS[d || '未知'] || DYN_COLORS['未知']
 }
-function dynToT(p: GalaxyPoet): number {
-  const band = DYN_T[p.dynasty] || [0.2, 0.8]
-  return band[0] + rand(p.id + 't') * (band[1] - band[0])
+function poetX(p: GalaxyPoet): number {
+  const range = DYN_RANGES[p.dynasty] || [800, 1100]
+  const known = KNOWN_YEARS[p.name]
+  const year = known ?? (range[0] + rand(p.id + 'y') * (range[1] - range[0]))
+  const t = Math.min(1, Math.max(0, (year - YEAR_MIN) / (YEAR_MAX - YEAR_MIN)))
+  return X_LEFT + t * (X_RIGHT - X_LEFT) + (rand(p.id + 'x') - 0.5) * 14
 }
 function placePoet(p: GalaxyPoet): THREE.Vector3 {
-  const t = dynToT(p)
-  const arm = hash(p.id) % ARMS
-  const armOffset = (arm / ARMS) * Math.PI * 2
-  const angle = t * TURNS * Math.PI * 2 + armOffset
-  const radius = INNER_R + t * (OUTER_R - INNER_R)
-  const jr = (rand(p.id + 'r') - 0.5) * 46
-  const jy = (rand(p.id + 'y') - 0.5) * V_SPREAD * (0.4 + t * 0.6)
-  const jz = (rand(p.id + 'z') - 0.5) * 46
+  const laneY = LANE_Y[p.dynasty] ?? 0
   return new THREE.Vector3(
-    Math.cos(angle) * radius + Math.cos(angle + 1.2) * jr,
-    jy,
-    Math.sin(angle) * radius + Math.sin(angle + 1.2) * jz
+    poetX(p),
+    laneY + (rand(p.id + 'lane') - 0.5) * 22,
+    (rand(p.id + 'z') - 0.5) * 60
   )
 }
 function poetSize(count: number): number {
@@ -233,11 +258,53 @@ function buildStarfield() {
 function buildCoreGlow() {
   if (!scene || !galaxy) return
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: GLOW, color: GOLD, transparent: true, opacity: 0.4,
+    map: GLOW, color: GOLD, transparent: true, opacity: 0.15,
     depthWrite: false, blending: THREE.AdditiveBlending
   }))
-  sp.scale.set(150, 150, 1)
+  sp.scale.set(700, 500, 1)
   galaxy.add(sp)
+}
+
+// 朝代泳道基线 + 左侧轴标
+function makeTextSprite(text: string, color: string, scale = 1): THREE.Sprite {
+  const c = document.createElement('canvas')
+  const pad = 10, fs = 46
+  const ctx = c.getContext('2d')!
+  ctx.font = `700 ${fs}px "PingFang SC","Microsoft YaHei",sans-serif`
+  const w = ctx.measureText(text).width
+  c.width = w + pad * 2
+  c.height = fs + pad * 2
+  const x = c.getContext('2d')!
+  x.font = `700 ${fs}px "PingFang SC","Microsoft YaHei",sans-serif`
+  x.textBaseline = 'middle'
+  x.fillStyle = color
+  x.fillText(text, pad, c.height / 2)
+  const tex = new THREE.CanvasTexture(c)
+  tex.colorSpace = THREE.SRGBColorSpace
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: tex, transparent: true, depthWrite: false
+  }))
+  sp.scale.set((c.width / c.height) * scale * 14, scale * 14, 1)
+  return sp
+}
+
+function buildLanes() {
+  if (!galaxy) return
+  const mat = new THREE.LineBasicMaterial({
+    color: GOLD, transparent: true, opacity: 0.28, depthWrite: false
+  })
+  Object.entries(LANE_Y).forEach(([dyn, y]) => {
+    const range = DYN_RANGES[dyn] || [800, 1100]
+    const x0 = X_LEFT - 30, x1 = X_RIGHT + 30
+    const geo = new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(x0, y, -10), new THREE.Vector3(x1, y, -10)
+    ])
+    galaxy!.add(new THREE.Line(geo, mat))
+    // 轴标：朝代 + 年代范围
+    const label = makeTextSprite(`${dyn} ${range[0]}–${range[1]}`, DYN_COLORS[dyn] || '#D4AF37', 1)
+    label.position.set(X_LEFT - 105, y, 0)
+    galaxy!.add(label)
+  })
 }
 
 function addStar(p: GalaxyPoet) {
@@ -280,7 +347,6 @@ function buildLegend() {
 const raycaster = new THREE.Raycaster()
 const pointer = new THREE.Vector2()
 let fly: { camTo: THREE.Vector3; tgtTo: THREE.Vector3 } | null = null
-const keys: Record<string, boolean> = {}
 
 function setPointer(e: PointerEvent) {
   pointer.x = (e.clientX / innerWidth) * 2 - 1
@@ -365,56 +431,56 @@ function chooseSuggest(p: GalaxyPoet) {
   if (o) openPoet(p, o.sprite)
 }
 
-// ---------- 标签 ----------
+// ---------- 标签（随缩放自适应） ----------
 function toggleLabels() {
   labelsOn.value = !labelsOn.value
   if (labelsOn.value) ensureLabelEls()
   else labelEls.forEach(l => { l.style.display = 'none' })
 }
 function resetView() {
-  fly = { camTo: new THREE.Vector3(0, 180, 620), tgtTo: new THREE.Vector3(0, 0, 0) }
+  fly = { camTo: new THREE.Vector3(0, 0, 720), tgtTo: new THREE.Vector3(0, 0, 0) }
   closePanel()
 }
 function ensureLabelEls() {
-  if (labelEls.length) {
-    labelEls.forEach(l => { l.style.display = 'block' })
-    return
-  }
-  starObjs.forEach(o => {
-    if (o.poet.count < 200) return   // 只给巨星贴名
+  if (labelEls.length) return
+  starObjs.forEach((o, idx) => {
+    if (o.poet.count < 20) return   // 标签池：存诗 ≥20 的作者
     const el = document.createElement('div')
-    el.className = 'g-plabel'
+    el.className = 'g-plabel' + (idx % 2 ? ' g-plabel-b' : '')   // 上下交错减少碰撞
     el.textContent = o.poet.name
     el.style.color = dynColorOf(o.poet.dynasty)
+    el.style.display = 'none'
     document.body.appendChild(el)
     o.labelEl = el
     labelEls.push(el)
   })
 }
 function updateLabels() {
-  if (!labelsOn.value || !camera) return
+  if (!labelsOn.value || !camera || !controls) return
   const cam = camera
+  const dist = camera.position.distanceTo(controls.target)
+  // 越近显示越多：远景只标巨星（≥250 首），中景 ≥80，较近 ≥30，贴近后 ≥20
+  const thr = dist > 850 ? 250 : dist > 550 ? 80 : dist > 350 ? 30 : 20
   const v = new THREE.Vector3()
-  starObjs.forEach(o => {
-    if (!o.labelEl) return
+  let visible = 0
+  for (const o of starObjs) {
+    if (!o.labelEl) continue
+    if (visible >= 520) { o.labelEl.style.display = 'none'; continue }
     o.sprite.getWorldPosition(v)
     v.project(cam)
-    const inFront = v.z < 1
-    if (inFront && v.x > -1.1 && v.x < 1.1 && v.y > -1.1 && v.y < 1.1) {
+    const inFront = v.z < 1 && v.x > -1.08 && v.x < 1.08 && v.y > -1.08 && v.y < 1.08
+    if (inFront && o.poet.count >= thr) {
       o.labelEl.style.display = 'block'
       o.labelEl.style.left = (v.x * 0.5 + 0.5) * innerWidth + 'px'
       o.labelEl.style.top = (-v.y * 0.5 + 0.5) * innerHeight + 'px'
-    } else o.labelEl.style.display = 'none'
-  })
+      visible++
+    } else {
+      o.labelEl.style.display = 'none'
+    }
+  }
 }
 
 // ---------- 键盘 ----------
-function onKeyDown(e: KeyboardEvent) {
-  const tag = (e.target as HTMLElement)?.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA') return
-  keys[e.key.toLowerCase()] = true
-}
-function onKeyUp(e: KeyboardEvent) { keys[e.key.toLowerCase()] = false }
 function onResize() {
   if (!camera || !renderer) return
   camera.aspect = innerWidth / innerHeight
@@ -423,35 +489,15 @@ function onResize() {
 }
 
 // ---------- 主循环 ----------
-const tmpF = new THREE.Vector3(), tmpR = new THREE.Vector3(), tmpU = new THREE.Vector3(0, 1, 0)
 const clock = new THREE.Clock()
 function animate() {
   if (disposed) return
   rafId = requestAnimationFrame(animate)
-  const dt = Math.min(clock.getDelta(), 0.05)
-  if (!fly && galaxy) galaxy.rotation.y += dt * 0.012
+  Math.min(clock.getDelta(), 0.05)
   if (fly && camera && controls) {
     camera.position.lerp(fly.camTo, 0.06)
     controls.target.lerp(fly.tgtTo, 0.06)
     if (camera.position.distanceTo(fly.camTo) < 2) fly = null
-  }
-  // WASD 穿行
-  const typing = document.activeElement && document.activeElement.tagName === 'INPUT'
-  if (!typing && camera && controls && (keys['w'] || keys['s'] || keys['a'] || keys['d'])) {
-    camera.getWorldDirection(tmpF).normalize()
-    tmpR.crossVectors(tmpF, tmpU).normalize()
-    const sp = 90 * dt
-    const mv = new THREE.Vector3()
-    if (keys['w']) mv.add(tmpF)
-    if (keys['s']) mv.sub(tmpF)
-    if (keys['d']) mv.add(tmpR)
-    if (keys['a']) mv.sub(tmpR)
-    if (mv.lengthSq() > 0) {
-      mv.normalize().multiplyScalar(sp)
-      camera.position.add(mv)
-      controls.target.add(mv)
-      fly = null
-    }
   }
   // 悬停星脉动
   const tms = performance.now() * 0.003
@@ -490,7 +536,7 @@ async function init() {
   scene.add(galaxy)
 
   camera = new THREE.PerspectiveCamera(58, innerWidth / innerHeight, 0.5, 6000)
-  camera.position.set(0, 520, 1300)
+  camera.position.set(0, 0, 720)
 
   renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' })
   renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
@@ -501,23 +547,25 @@ async function init() {
   controls = new OrbitControls(camera, renderer.domElement)
   controls.enableDamping = true
   controls.dampingFactor = 0.08
-  controls.rotateSpeed = 0.5
-  controls.minDistance = 6
+  controls.enableRotate = false      // 时间轴不需要旋转，平移 + 缩放
+  controls.screenSpacePanning = true
+  controls.minDistance = 60
   controls.maxDistance = 1600
 
   buildStarfield()
   buildCoreGlow()
+  buildLanes()
   poets.forEach(addStar)
   buildLegend()
+  ensureLabelEls()
 
   window.addEventListener('resize', onResize)
   renderer.domElement.addEventListener('pointermove', onPointerMove)
   renderer.domElement.addEventListener('click', onClick)
-  window.addEventListener('keydown', onKeyDown)
-  window.addEventListener('keyup', onKeyUp)
 
-  // 开场飞入
-  fly = { camTo: new THREE.Vector3(0, 180, 620), tgtTo: new THREE.Vector3(0, 0, 0) }
+  // 开场：从高空落到正面视角
+  camera.position.set(0, 420, 1500)
+  fly = { camTo: new THREE.Vector3(0, 0, 720), tgtTo: new THREE.Vector3(0, 0, 0) }
 
   loading.value = false
   animate()
@@ -529,8 +577,6 @@ onBeforeUnmount(() => {
   disposed = true
   cancelAnimationFrame(rafId)
   window.removeEventListener('resize', onResize)
-  window.removeEventListener('keydown', onKeyDown)
-  window.removeEventListener('keyup', onKeyUp)
   labelEls.forEach(l => l.remove())
   if (renderer) {
     renderer.domElement.removeEventListener('pointermove', onPointerMove)
@@ -693,11 +739,23 @@ onBeforeUnmount(() => {
 }
 .poem .pc .no-lines { color: var(--ink-mist, #847F6E); font-size: 12px; }
 
-/* 星名标签（非 scoped，动态创建） */
+/* 星名标签（动态创建，走全局样式，见下方非 scoped 块） */
+</style>
+
+<style>
+/* 星名标签：JS 动态创建的 DOM 拿不到 scoped 属性，必须用全局样式 */
 .g-plabel {
-  position: fixed; z-index: 15; display: none;
+  position: fixed;
+  z-index: 15;
+  display: none;
   transform: translate(-50%, -140%);
-  font-size: 12px; font-weight: 600; pointer-events: none;
+  font-size: 12px;
+  font-weight: 600;
+  pointer-events: none;
   text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+.g-plabel-b {
+  transform: translate(-50%, 45%);
 }
 </style>
