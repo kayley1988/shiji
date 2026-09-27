@@ -146,6 +146,16 @@ PUBLIC_PATHS = [
 @app.before_request
 def check_auth():
     """全局认证检查"""
+    # AI 功能统一开关（最高优先级，设置页可关）
+    _ai_gates = [
+        ('/v1/ai/poem-explain', 'explain'), ('/api/v1/ai/poem-explain', 'explain'),
+        ('/v1/poet/roundtable', 'roundtable'), ('/api/v1/poet/roundtable', 'roundtable'),
+        ('/v1/art/', 'art'), ('/api/v1/art/', 'art'),
+    ]
+    for _prefix, _feat in _ai_gates:
+        if request.path.startswith(_prefix) and not _ai_feature_enabled(_feat):
+            return jsonify({'code': 403, 'message': f'AI 功能「{AI_FEATURES[_feat]}」已在设置中关闭'}), 403
+
     # 允许白名单路径
     if any(request.path.startswith(p) for p in PUBLIC_PATHS):
         return None
@@ -175,6 +185,88 @@ def require_auth(f):
             return jsonify({'error': 'UNAUTHORIZED'}), 401
         return f(*args, **kwargs)
     return decorated
+
+
+# ============ AI 服务统一设置（设置页管理）============
+AI_SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ai_settings.json')
+AI_FEATURES = {'explain': 'AI 诗词解读', 'roundtable': '诗人圆桌', 'art': 'AI 画作'}
+
+
+def _load_ai_settings():
+    try:
+        with open(AI_SETTINGS_FILE, encoding='utf-8') as f:
+            data = json.load(f)
+    except Exception:
+        data = {}
+    feats = {k: bool(data.get('features', {}).get(k, True)) for k in AI_FEATURES}
+    return {'features': feats}
+
+
+def _save_ai_settings(settings):
+    with open(AI_SETTINGS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
+
+
+def _ai_feature_enabled(feature):
+    return _load_ai_settings()['features'].get(feature, True)
+
+
+def _update_env_key(key_name, value):
+    """更新 backend/.env 中的键（不存在则追加），并同步 os.environ"""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    lines = []
+    if os.path.exists(env_path):
+        with open(env_path, encoding='utf-8') as f:
+            lines = f.read().splitlines()
+    replaced = False
+    for i, line in enumerate(lines):
+        if line.strip().startswith(f'{key_name}=') or line.strip().startswith(f'# {key_name}='):
+            lines[i] = f'{key_name}={value}'
+            replaced = True
+            break
+    if not replaced:
+        lines.append(f'{key_name}={value}')
+    with open(env_path, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(lines) + '\n')
+    os.environ[key_name] = value
+    setattr(Config, key_name, value)
+
+
+@app.route('/v1/ai/settings', methods=['GET', 'POST'])
+@app.route('/api/v1/ai/settings', methods=['GET', 'POST'])
+def ai_settings_route():
+    """AI 服务统一设置：功能开关 + DeepSeek Key 管理（Key 只写不读）"""
+    if request.method == 'GET':
+        s = _load_ai_settings()
+        return jsonify({'data': {
+            'provider': 'DeepSeek',
+            'key_configured': bool(os.environ.get('DEEPSEEK_API_KEY') or Config.DEEPSEEK_API_KEY),
+            'features': s['features'],
+            'feature_names': AI_FEATURES,
+        }})
+
+    # POST：需要登录态
+    if not request.headers.get('Authorization', '').replace('Bearer ', ''):
+        return jsonify({'error': 'UNAUTHORIZED', 'message': '需要登录'}), 401
+
+    body = request.get_json(silent=True) or {}
+    s = _load_ai_settings()
+
+    if 'features' in body:
+        for k, v in body['features'].items():
+            if k in AI_FEATURES:
+                s['features'][k] = bool(v)
+        _save_ai_settings(s)
+
+    key_msg = None
+    new_key = (body.get('api_key') or '').strip()
+    if new_key:
+        if not new_key.startswith('sk-'):
+            return jsonify({'code': 400, 'message': 'DeepSeek Key 格式不正确（应以 sk- 开头）'}), 400
+        _update_env_key('DEEPSEEK_API_KEY', new_key)
+        key_msg = 'DeepSeek Key 已更新'
+
+    return jsonify({'data': {'features': s['features'], 'key_configured': True, 'message': key_msg or '设置已保存'}})
 
 
 @socketio.on('connect')

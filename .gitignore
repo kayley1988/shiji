@@ -28,3 +28,6 @@ frontend/dist/
 # Vite 临时文件
 frontend/vite.config.ts.timestamp-*.mjs
 
+
+# AI 设置（含本地覆盖）
+backend/ai_settings.json

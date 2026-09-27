@@ -47,6 +47,11 @@ const http = {
 }
 
 export const api = {
+  // ── AI 服务统一设置 ─────────────────────
+  aiGetSettings: () => http.get('/v1/ai/settings'),
+  aiSaveSettings: (data: { features?: Record<string, boolean>; api_key?: string }) =>
+    http.post('/v1/ai/settings', data),
+
   // ── 通用请求（供页面直接调用任意 /v1/* 接口）──
   get: (url: string, config?: any) => http.get(url, config),
   post: (url: string, data?: any, config?: any) => http.post(url, data, config),

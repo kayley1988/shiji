@@ -117,6 +117,37 @@
       </div>
     </div>
 
+    <!-- AI 服务设置 -->
+    <div class="ai-card animate-fadeUp delay-3" v-if="aiSettings">
+      <h2 class="card-title">AI 设置</h2>
+
+      <div class="ai-status">
+        <span class="ai-provider">🤖 {{ aiSettings.provider }}</span>
+        <span class="ai-key-badge" :class="aiSettings.key_configured ? 'ok' : 'bad'">
+          {{ aiSettings.key_configured ? 'API Key 已配置' : 'API Key 未配置' }}
+        </span>
+      </div>
+
+      <div class="ai-row" v-for="(name, key) in aiSettings.features" :key="key">
+        <span class="ai-row-name">{{ aiSettings.feature_names[key] }}</span>
+        <van-switch v-model="aiSettings.features[key]" size="20px" active-color="#D4AF37" />
+      </div>
+
+      <div class="ai-key-row">
+        <input
+          v-model="aiKeyInput"
+          class="ai-key-input"
+          type="password"
+          placeholder="更新 DeepSeek API Key（留空则不修改）"
+          autocomplete="off"
+        />
+      </div>
+
+      <button class="ai-save-btn" :disabled="aiSaving" @click="saveAiSettings">
+        {{ aiSaving ? '保存中…' : '保存 AI 设置' }}
+      </button>
+    </div>
+
     <!-- 链接 -->
     <div class="link-list animate-fadeUp delay-3">
       <div class="link-item" @click="$router.push('/badges')">
@@ -147,6 +178,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { showToast } from 'vant'
 import { useAuthStore } from '../stores/auth'
 import { api } from '../api'
 
@@ -266,7 +298,37 @@ onMounted(async () => {
   } catch (e) {
     console.error('获取用户信息失败', e)
   }
+  // AI 设置
+  try {
+    const r = await api.aiGetSettings()
+    aiSettings.value = r.data
+  } catch (e) {
+    console.warn('获取 AI 设置失败', e)
+  }
 })
+
+// ── AI 设置 ────────────────────────────
+const aiSettings = ref<any>(null)
+const aiKeyInput = ref('')
+const aiSaving = ref(false)
+
+async function saveAiSettings() {
+  if (aiSaving.value) return
+  aiSaving.value = true
+  try {
+    const payload: any = { features: aiSettings.value.features }
+    if (aiKeyInput.value.trim()) payload.api_key = aiKeyInput.value.trim()
+    await api.aiSaveSettings(payload)
+    aiKeyInput.value = ''
+    const r = await api.aiGetSettings()
+    aiSettings.value = r.data
+    showToast('AI 设置已保存')
+  } catch (e: any) {
+    showToast(e?.response?.data?.message || '保存失败，请重试')
+  } finally {
+    aiSaving.value = false
+  }
+}
 </script>
 
 <style scoped>
@@ -379,4 +441,38 @@ onMounted(async () => {
 .link-arrow { color: #ccc; font-size: 14px; }
 
 .safe-bottom { height: 40px; }
+
+/* ── AI 设置卡片 ──────────────────────── */
+.ai-card {
+  margin: 12px 16px; background: var(--card); border-radius: 12px;
+  padding: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+}
+.ai-status {
+  display: flex; align-items: center; justify-content: space-between;
+  margin: 10px 0 14px; font-size: 13px;
+}
+.ai-provider { color: var(--ink-light, #999); }
+.ai-key-badge { padding: 2px 10px; border-radius: 999px; font-size: 12px; }
+.ai-key-badge.ok { background: rgba(94,140,97,0.15); color: #5E8C61; }
+.ai-key-badge.bad { background: rgba(212,175,55,0.15); color: var(--cinnabar, #D4AF37); }
+.ai-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 0; border-top: 1px solid var(--line, #eee);
+}
+.ai-row-name { font-size: 14px; color: var(--ink, #333); }
+.ai-key-row { margin-top: 12px; }
+.ai-key-input {
+  width: 100%; box-sizing: border-box; padding: 10px 12px;
+  border: 1px solid var(--line, #ddd); border-radius: 8px;
+  background: var(--paper-warm, #f7f7f7); color: var(--ink, #333);
+  font-size: 13px; outline: none;
+}
+.ai-key-input:focus { border-color: var(--cinnabar, #D4AF37); }
+.ai-save-btn {
+  width: 100%; margin-top: 12px; padding: 10px 0;
+  background: var(--cinnabar, #D4AF37); color: #14161B;
+  border: none; border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer;
+}
+.ai-save-btn:disabled { opacity: 0.6; }
 </style>
