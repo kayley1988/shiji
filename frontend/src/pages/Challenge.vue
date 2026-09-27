@@ -91,6 +91,27 @@
         </div>
       </div>
 
+      <!-- 模式 -->
+      <div class="dim-section">
+        <div class="dim-label">
+          <van-icon name="fire-o" size="14" />
+          <span>模式</span>
+        </div>
+        <div class="mode-chips">
+          <button class="mode-chip" :class="{ active: mode === 'classic' }" @click="mode = 'classic'">
+            <span class="mc-name">经典闯关</span>
+            <span class="mc-desc">10 题一局，看成绩</span>
+          </button>
+          <button class="mode-chip" :class="{ active: mode === 'endless' }" @click="mode = 'endless'">
+            <span class="mc-name">无尽刷题 ∞</span>
+            <span class="mc-desc">连刷不停，随时结算</span>
+          </button>
+        </div>
+        <p class="lifetime-line" v-if="lifetime.answered">
+          历史累计：刷过 {{ lifetime.answered }} 题 · 答对 {{ lifePct }}% · 最高连对 {{ lifetime.bestStreak }}
+        </p>
+      </div>
+
       <!-- 开始按钮 -->
       <div class="start-area">
         <van-button
@@ -102,7 +123,7 @@
           class="start-btn"
           @click="handleStart"
         >
-          {{ starting ? '题库抽取中…' : (selected.dynasty ? '开始闯关' : '请先选择朝代') }}
+          {{ starting ? '题库抽取中…' : (selected.dynasty ? (mode === 'endless' ? '开始连刷 ∞' : '开始闯关') : '请先选择朝代') }}
         </van-button>
         <p class="start-tip" v-if="startError">{{ startError }}</p>
       </div>
@@ -113,11 +134,14 @@
 
       <!-- 进度条 -->
       <div class="play-progress">
-        <span class="pp-index">{{ currentIdx + 1 }}/{{ questions.length }}</span>
+        <span class="pp-index">{{ isEndless ? `第${cum.rounds + 1}组 ` : '' }}{{ currentIdx + 1 }}/{{ questions.length }}</span>
         <div class="pp-bar">
           <div class="pp-fill" :style="{ width: ((currentIdx + 1) / questions.length * 100) + '%' }"></div>
         </div>
-        <span class="pp-score">✓ {{ answeredCount }}</span>
+        <span class="pp-score" :class="{ fire: isEndless && cum.streak >= 3 }">
+          {{ isEndless ? `✓${cum.correct} · 连${cum.streak}` : `✓ ${answeredCount}` }}
+        </span>
+        <span v-if="isEndless" class="pp-cashout" @click="settleEndless(true)">结算</span>
       </div>
 
       <!-- 当前题目 -->
@@ -200,6 +224,17 @@
         <div class="result-exp">+{{ resultData.exp_gain }} 经验值</div>
       </div>
 
+      <!-- 无尽模式：本次连刷累计 -->
+      <div v-if="resultData?.cumulative" class="cum-card">
+        <div class="cum-title">∞ 本次连刷战绩</div>
+        <div class="cum-grid">
+          <div class="cum-cell"><b>{{ resultData.cumulative.answered }}</b><span>已刷题数</span></div>
+          <div class="cum-cell"><b>{{ resultData.cumulative.correct }}</b><span>答对</span></div>
+          <div class="cum-cell"><b>{{ accPct }}%</b><span>正确率</span></div>
+          <div class="cum-cell"><b>{{ resultData.cumulative.bestStreak }}</b><span>最高连对</span></div>
+        </div>
+      </div>
+
       <!-- 答题回顾 -->
       <div class="review-list">
         <div
@@ -221,7 +256,9 @@
       </div>
 
       <div class="result-actions">
-        <van-button type="primary" block round class="retry-btn" @click="handleRetry">再来一局</van-button>
+        <van-button v-if="resultData?.cumulative" type="primary" block round class="retry-btn" @click="continueEndless">继续刷 ∞</van-button>
+        <van-button v-else type="primary" block round class="retry-btn" @click="handleRetry">再来一局</van-button>
+        <van-button v-if="resultData?.cumulative" plain block round class="back-btn" @click="handleRetry">换个维度</van-button>
         <van-button plain block round class="back-btn" @click="$router.back()">返回首页</van-button>
       </div>
     </div>
@@ -275,6 +312,28 @@ const starting = ref(false)
 const startError = ref('')
 const dimensions = ref<Dimensions | null>(null)
 
+// 模式：classic 经典 10 题 / endless 无尽连刷
+const mode = ref<'classic' | 'endless'>('classic')
+const isEndless = computed(() => mode.value === 'endless')
+
+// 无尽模式：本次连刷累计（组数/题数/答对/总分/经验/连对）
+const cum = ref({ rounds: 0, answered: 0, correct: 0, score: 0, exp: 0, streak: 0, bestStreak: 0 })
+// 历史累计（跨会话持久化）
+const LKEY = 'shiji_endless_lifetime'
+const lifetime = ref({ answered: 0, correct: 0, bestStreak: 0 })
+const accPct = computed(() => cum.value.answered ? Math.round(cum.value.correct / cum.value.answered * 100) : 0)
+const lifePct = computed(() => lifetime.value.answered ? Math.round(lifetime.value.correct / lifetime.value.answered * 100) : 0)
+
+function loadLifetime() {
+  try {
+    const v = JSON.parse(localStorage.getItem(LKEY) || '{}')
+    if (v && typeof v.answered === 'number') lifetime.value = v
+  } catch { lifetime.value = { answered: 0, correct: 0, bestStreak: 0 } }
+}
+function saveLifetime() {
+  try { localStorage.setItem(LKEY, JSON.stringify(lifetime.value)) } catch { /* 忽略 */ }
+}
+
 // 选择状态
 const selected = ref({ dynasty: '', faction: '', theme: '', form: '' })
 
@@ -301,6 +360,7 @@ const starCount = computed(() => {
 
 // ── 加载维度 ──────────────────────────────────────
 onMounted(async () => {
+  loadLifetime()
   loading.value = true
   try {
     const res = await api.getChallengeDimensions()
@@ -321,12 +381,18 @@ function toggleChip(type: 'faction' | 'theme' | 'form', id: string) {
   }
 }
 
-// ── 开始闯关 ──────────────────────────────────────
+// ── 开始闯关（无尽模式重置本次累计） ──────────────────────────────────────
 async function handleStart() {
   if (!selected.value.dynasty) {
     startError.value = '请先选择一个朝代'
     return
   }
+  cum.value = { rounds: 0, answered: 0, correct: 0, score: 0, exp: 0, streak: 0, bestStreak: 0 }
+  await startBatch()
+}
+
+// 抽一组新题进入答题（保持 cum 不动，供无尽续组复用）
+async function startBatch() {
   starting.value = true
   startError.value = ''
   try {
@@ -369,17 +435,70 @@ function confirmAnswer() {
     answer: selectedOpt.value,
     isCorrect,
   }
+  // 无尽模式：实时连对统计
+  if (isEndless.value) {
+    if (isCorrect) {
+      cum.value.streak++
+      cum.value.bestStreak = Math.max(cum.value.bestStreak, cum.value.streak)
+    } else {
+      cum.value.streak = 0
+    }
+  }
 }
 
 // ── 下一题 ──────────────────────────────────────
 function nextQuestion() {
   if (currentIdx.value + 1 >= questions.value.length) {
-    submitChallenge()
+    if (isEndless.value) settleEndless()
+    else submitChallenge()
   } else {
     currentIdx.value++
     selectedOpt.value = ''
     showResult.value = false
   }
+}
+
+// ── 无尽模式：结算本组 → 落账 → 无缝续组或收摊 ──────────────────────────────────────
+async function settleEndless(cashOut = false) {
+  loading.value = true
+  try {
+    const res = await api.submitChallenge({
+      session_id: sessionId.value,
+      answers: answers.value
+        .filter(a => a.answer !== null)
+        .map(a => ({ line_id: a.line_id, answer: a.answer as string })),
+    })
+    const d = res.data
+    const answeredN = answers.value.filter(a => a.answer !== null).length
+    cum.value.rounds++
+    cum.value.answered += answeredN
+    cum.value.correct += d.correct
+    cum.value.score += d.score
+    cum.value.exp += d.exp_gain
+    // 历史累计落账
+    lifetime.value.answered += answeredN
+    lifetime.value.correct += d.correct
+    lifetime.value.bestStreak = Math.max(lifetime.value.bestStreak, cum.value.bestStreak)
+    saveLifetime()
+
+    if (cashOut) {
+      resultData.value = { ...d, cumulative: { ...cum.value } }
+      cum.value.streak = 0
+      phase.value = 'result'
+    } else {
+      showToast(`第 ${cum.value.rounds} 组完成 · 累计 ✓${cum.value.correct}/${cum.value.answered}`)
+      await startBatch()
+    }
+  } catch (e) {
+    showToast('结算失败，请重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 结果页「继续刷 ∞」：保持本次累计，续一组
+async function continueEndless() {
+  await startBatch()
 }
 
 // ── 提交闯关 ──────────────────────────────────────
@@ -470,6 +589,44 @@ function handleRetry() {
 .start-area { margin-top: 28px; }
 .start-btn { height: 48px; font-size: 16px; }
 .start-tip { text-align: center; font-size: 13px; color: var(--cinnabar); margin-top: 8px; }
+
+/* 模式选择 */
+.mode-chips { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.mode-chip {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--card); border: 1.5px solid var(--line);
+  cursor: pointer; transition: all 0.2s; text-align: left;
+}
+.mode-chip.active {
+  border-color: var(--cinnabar);
+  background: rgba(212,175,55,0.07);
+  box-shadow: 0 2px 10px rgba(212,175,55,0.15);
+}
+.mc-name { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--ink); }
+.mode-chip.active .mc-name { color: var(--cinnabar); }
+.mc-desc { font-size: 12px; color: var(--stone); }
+.lifetime-line { margin-top: 10px; font-size: 12px; color: var(--stone-light); text-align: center; }
+
+/* 无尽模式答题页 */
+.pp-cashout {
+  font-size: 12px; font-weight: 600; cursor: pointer; user-select: none;
+  color: var(--gold); padding: 4px 10px; border-radius: 12px;
+  border: 1px solid rgba(212,175,55,0.4); white-space: nowrap;
+}
+.pp-cashout:hover { background: rgba(212,175,55,0.12); }
+.pp-score.fire { color: var(--cinnabar); font-weight: 700; }
+
+/* 无尽战绩卡 */
+.cum-card {
+  background: var(--card); border-radius: 14px; padding: 16px;
+  border: 1px solid rgba(212,175,55,0.2);
+}
+.cum-title { font-size: 14px; font-weight: 700; color: var(--gold); margin-bottom: 12px; text-align: center; letter-spacing: 1px; }
+.cum-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; text-align: center; }
+.cum-cell { display: flex; flex-direction: column; gap: 2px; }
+.cum-cell b { font-family: var(--font-display); font-size: 22px; color: var(--cinnabar); }
+.cum-cell span { font-size: 11px; color: var(--stone); }
 
 /* ── 答题页 ── */
 .phase-play { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
