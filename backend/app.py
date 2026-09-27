@@ -1232,7 +1232,7 @@ def get_practice_lines():
             JOIN poems p ON p.id = pl.poem_id
             WHERE p.review_status = 'APPROVED'
               AND pl.normalized_content LIKE :kw
-            ORDER BY RAND()
+            ORDER BY RANDOM()
             LIMIT :lim
         '''), {'kw': f'%{kw}%', 'lim': limit}).fetchall()
 
@@ -1338,7 +1338,7 @@ def validate_practice_answer():
         JOIN poems p ON p.id = pl.poem_id
         WHERE p.review_status = 'APPROVED'
           AND pl.normalized_content LIKE :kw
-        ORDER BY RAND()
+        ORDER BY RANDOM()
         LIMIT 3
     '''), {'kw': f'%{keyword}%'}).fetchall()
 
@@ -1382,7 +1382,7 @@ def get_daily_recommend():
             WHERE p.review_status = 'APPROVED'
               AND pl.normalized_content LIKE :kw
               AND p.id NOT IN :seen_ids
-            ORDER BY RAND()
+            ORDER BY RANDOM()
             LIMIT 5
         '''), {'kw': f'%{kw}%', 'seen_ids': tuple(seen) if seen else ('__none__',)}).fetchall()
 
@@ -1409,7 +1409,7 @@ def get_daily_recommend():
             JOIN poems p ON p.id = pl.poem_id
             WHERE p.review_status = 'APPROVED'
               AND p.id NOT IN :seen_ids
-            ORDER BY RAND()
+            ORDER BY RANDOM()
             LIMIT :lim
         '''), {'seen_ids': tuple(seen) if seen else ('__none__',), 'lim': 8 - len(results)}).fetchall()
         for row in extras:
@@ -1597,7 +1597,7 @@ def ai_poem_explain():
                 SELECT p.id, p.title, p.author, p.dynasty
                 FROM poems p
                 WHERE p.author = :author AND p.review_status = 'APPROVED'
-                ORDER BY RAND()
+                ORDER BY RANDOM()
                 LIMIT 200
             '''), {'author': author}).fetchall()
             seen = set()
@@ -1741,7 +1741,7 @@ def _search_poet_refs(author, messages):
                 WHERE p.author = :author
                   AND p.review_status = 'APPROVED'
                   AND ({conds})
-                ORDER BY RAND()
+                ORDER BY RANDOM()
                 LIMIT 6
             '''
         else:
@@ -1752,7 +1752,7 @@ def _search_poet_refs(author, messages):
                 JOIN poems p ON p.id = pl.poem_id
                 WHERE p.author = :author
                   AND p.review_status = 'APPROVED'
-                ORDER BY RAND()
+                ORDER BY RANDOM()
                 LIMIT 6
             '''
         rows = db.execute(text(sql), params).fetchall()
@@ -1971,7 +1971,7 @@ def poet_feihualing():
                 WHERE p.author = :author
                   AND p.review_status = 'APPROVED'
                   AND pl.normalized_content LIKE :kw
-                ORDER BY RAND()
+                ORDER BY RANDOM()
                 LIMIT 10
             '''), {'author': author, 'kw': f'%{keyword}%'}).fetchall()
             for r in rows:
@@ -2076,7 +2076,7 @@ def get_ambient_poem():
               AND p.category != '戏曲'
               AND (t.name = :kw OR pl.normalized_content LIKE :pat)
             GROUP BY p.id
-            ORDER BY RAND()
+            ORDER BY RANDOM()
             LIMIT 1
         '''), {'kw': mood_kw, 'pat': f'%{mood_kw}%'}).fetchone()
         
@@ -2089,7 +2089,7 @@ def get_ambient_poem():
                 JOIN poem_lines pl ON pl.poem_id = p.id
                 WHERE p.review_status = 'APPROVED' AND p.category != '戏曲'
                 GROUP BY p.id
-                ORDER BY RAND()
+                ORDER BY RANDOM()
                 LIMIT 1
             ''')).fetchone()
         
@@ -2162,7 +2162,7 @@ def get_poem_fortune():
             WHERE p.review_status = 'APPROVED'
               AND p.category != '戏曲'
               AND pl.normalized_content LIKE :pat
-            ORDER BY RAND()
+            ORDER BY RANDOM()
             LIMIT 1
         '''), {'pat': f'%{kw}%'}).fetchone()
         
@@ -2173,7 +2173,7 @@ def get_poem_fortune():
                 FROM poems p
                 JOIN poem_lines pl ON pl.poem_id = p.id
                 WHERE p.review_status = 'APPROVED' AND p.category != '戏曲'
-                ORDER BY RAND()
+                ORDER BY RANDOM()
                 LIMIT 1
             ''')).fetchone()
         

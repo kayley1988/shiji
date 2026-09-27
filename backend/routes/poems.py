@@ -1,13 +1,70 @@
 """
 诗词 API 路由
 """
+import os
 import random
 from datetime import datetime
 from flask import Blueprint, request, jsonify
+from sqlalchemy import create_engine, func
+from sqlalchemy.orm import sessionmaker, scoped_session
 
 from config import ART_PROMPTS
+from models import Poem, PoemLine, Tag, PoemLineTag, ReviewStatus
+from nlp.char_convert import to_simplified
 
 poems_bp = Blueprint('poems', __name__, url_prefix='/v1/poems')
+
+# ---------- 真实数据库读取（shiyayaji.db） ----------
+_engine = create_engine('sqlite:///' + os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'shiyayaji.db'))
+DBSession = scoped_session(sessionmaker(bind=_engine))
+
+
+def _format_content(lines_text):
+    """两句一组拼正文：A，B。C，D。"""
+    parts = []
+    for i in range(0, len(lines_text), 2):
+        parts.append('，'.join(lines_text[i:i + 2]) + '。')
+    return ''.join(parts)
+
+
+def _poem_from_db(poem_id):
+    """从真库读诗，返回与旧 mock 同构的 dict；查不到返回 None"""
+    db = DBSession()
+    try:
+        p = db.query(Poem).filter(Poem.id == poem_id).first()
+        if not p:
+            return None
+        lines = db.query(PoemLine).filter(PoemLine.poem_id == poem_id) \
+            .order_by(PoemLine.line_no).all()
+        lines_text = [to_simplified(l.content) for l in lines if l.content]
+        if not lines_text:
+            return None
+        tag_names = [r[0] for r in db.query(Tag.name)
+                     .join(PoemLineTag, PoemLineTag.tag_id == Tag.id)
+                     .join(PoemLine, PoemLine.id == PoemLineTag.poem_line_id)
+                     .filter(PoemLine.poem_id == poem_id).all()]
+        seen, tags = set(), []
+        for t in tag_names:
+            if t not in seen:
+                seen.add(t)
+                tags.append(t)
+        return {
+            'id': p.id,
+            'title': to_simplified(p.title or ''),
+            'author': to_simplified(p.author or ''),
+            'dynasty': p.dynasty or '',
+            'content': _format_content(lines_text),
+            'full_text': '\n'.join(lines_text),
+            'tags': tags,
+            'imagery': tags[:6],
+            'is_rare': any(bool(l.is_rare) for l in lines),
+            'difficulty': 'medium',
+        }
+    except Exception:
+        return None
+    finally:
+        db.close()
 
 # 模拟诗词数据库
 POEMS_DB = [
@@ -179,31 +236,31 @@ def list_poems():
 
 @poems_bp.route('/<poem_id>', methods=['GET'])
 def get_poem(poem_id):
-    """获取诗句详情"""
-    poem = next((p for p in POEMS_DB if p['id'] == poem_id), None)
-    
+    """获取诗句详情（优先真实数据库，兼容旧 mock ID）"""
+    poem = _poem_from_db(poem_id) or next((p for p in POEMS_DB if p['id'] == poem_id), None)
+
     if not poem:
         return jsonify({'error': 'POEM_NOT_FOUND'}), 404
-    
+
     return jsonify({'data': poem})
 
 
 @poems_bp.route('/<poem_id>/explanation', methods=['GET'])
 def get_poem_explanation(poem_id):
     """获取诗句赏析"""
-    poem = next((p for p in POEMS_DB if p['id'] == poem_id), None)
-    
+    poem = _poem_from_db(poem_id) or next((p for p in POEMS_DB if p['id'] == poem_id), None)
+
     if not poem:
         return jsonify({'error': 'POEM_NOT_FOUND'}), 404
-    
+
     explanation = EXPLANATIONS.get(poem_id, f'这首{poem["dynasty"]}诗表达了诗人独特的情感和意境，值得细细品味。')
-    
+
     return jsonify({
         'data': {
             'poem_id': poem_id,
             'title': poem['title'],
             'author': poem['author'],
-            'author_intro': f'{poem["author"]}（{poem["dynasty"]}），唐代著名诗人。',
+            'author_intro': f'{poem["author"]}（{poem["dynasty"]}），一代著名诗人。' if poem['dynasty'] else f'{poem["author"]}，一代著名诗人。',
             'explanation': explanation,
             'keywords': poem['tags'],
             'imagery': poem['imagery'],
@@ -218,37 +275,65 @@ def get_poem_explanation(poem_id):
 
 @poems_bp.route('/random', methods=['GET'])
 def get_random_poem():
-    """获取随机诗句"""
+    """获取随机诗句（真实数据库）"""
     keyword = request.args.get('keyword')
     difficulty = request.args.get('difficulty')
-    
-    poems = POEMS_DB
-    
-    if keyword:
-        poems = [p for p in poems if keyword in p['content']]
-    if difficulty:
-        poems = [p for p in poems if p['difficulty'] == difficulty]
-    
-    if not poems:
-        poems = POEMS_DB
-    
-    poem = random.choice(poems)
-    
+
+    poem = None
+    db = DBSession()
+    try:
+        q = db.query(Poem.id)
+        if keyword:
+            like = f'%{keyword.strip()}%'
+            line_ids = [r[0] for r in db.query(PoemLine.poem_id)
+                        .filter(PoemLine.normalized_content.like(like))
+                        .limit(5000).all()]
+            if line_ids:
+                q = q.filter(Poem.id.in_(line_ids))
+            else:
+                q = None
+        if q is not None:
+            pid = q.order_by(func.random()).limit(1).first()
+            if pid:
+                poem = _poem_from_db(pid[0])
+    except Exception:
+        poem = None
+    finally:
+        db.close()
+
+    if not poem:
+        poems = [p for p in POEMS_DB if (not keyword or keyword in p['content'])]
+        if difficulty:
+            poems = [p for p in poems if p['difficulty'] == difficulty]
+        poem = random.choice(poems or POEMS_DB)
+
     return jsonify({'data': poem})
 
 
 @poems_bp.route('/daily', methods=['GET'])
 def get_daily_poem():
-    """获取每日推荐"""
-    # 基于日期选择，确保每天相同
+    """获取每日推荐（真实数据库，按日期种子固定）"""
     today = datetime.now()
     seed = today.year * 10000 + today.month * 100 + today.day
-    random.seed(seed)
-    
-    poem = random.choice(POEMS_DB)
-    
-    random.seed()  # 重置随机种子
-    
+
+    poem = None
+    db = DBSession()
+    try:
+        total = db.query(func.count(Poem.id)).scalar() or 0
+        if total:
+            p = db.query(Poem).order_by(Poem.id).offset(seed % total).first()
+            if p:
+                poem = _poem_from_db(p.id)
+    except Exception:
+        poem = None
+    finally:
+        db.close()
+
+    if not poem:
+        random.seed(seed)
+        poem = random.choice(POEMS_DB)
+        random.seed()  # 重置随机种子
+
     return jsonify({
         'data': {
             **poem,
