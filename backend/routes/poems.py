@@ -56,6 +56,9 @@ def _poem_from_db(poem_id):
             'dynasty': p.dynasty or '',
             'content': _format_content(lines_text),
             'full_text': '\n'.join(lines_text),
+            # 逐句原文（保留繁体，前端做繁/简双栏）
+            'lines': [{'content': l.content, 'line_no': l.line_no}
+                      for l in lines if l.content],
             'tags': tags,
             'imagery': tags[:6],
             'is_rare': any(bool(l.is_rare) for l in lines),
