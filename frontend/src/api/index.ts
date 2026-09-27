@@ -308,34 +308,6 @@ export const api = {
     http.get(`/v1/tail-connect/rooms/${roomId}/used-lines`),
 
   // ═══════════════════════════════════════════════════════
-  // AI 生图
-  // ═══════════════════════════════════════════════════════
-
-  // 创建生图任务
-  createArtTask: (data: {
-    poem_id: string
-    poem_text: string
-    style: string
-    custom_prompt?: string
-  }) => http.post('/v1/art/generate', data),
-
-  // 获取生图任务状态
-  getArtTaskStatus: (taskId: string) =>
-    http.get(`/v1/art/tasks/${taskId}`),
-
-  // 获取用户生图配额
-  getArtQuota: () =>
-    http.get('/v1/art/quota'),
-
-  // 获取用户生图历史
-  getArtHistory: (params?: { status?: string; limit?: number }) =>
-    http.get('/v1/art/history', { params }),
-
-  // 删除生图任务
-  deleteArtTask: (taskId: string) =>
-    http.delete(`/v1/art/tasks/${taskId}`),
-
-  // ═══════════════════════════════════════════════════════
   // 诗词详情
   // ═══════════════════════════════════════════════════════
 

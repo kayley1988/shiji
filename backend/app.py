@@ -58,10 +58,6 @@ socketio = SocketIO(app, cors_allowed_origins=Config.CORS_ORIGINS, async_mode='e
 from routes.tail_connect import tail_connect_bp
 app.register_blueprint(tail_connect_bp, url_prefix='/v1/tail-connect')
 
-# AI 生图
-from routes.art import art_bp
-app.register_blueprint(art_bp, url_prefix='/v1/art')
-
 # 诗词
 from routes.poems import poems_bp
 app.register_blueprint(poems_bp, url_prefix='/v1/poems')
@@ -150,7 +146,6 @@ def check_auth():
     _ai_gates = [
         ('/v1/ai/poem-explain', 'explain'), ('/api/v1/ai/poem-explain', 'explain'),
         ('/v1/poet/roundtable', 'roundtable'), ('/api/v1/poet/roundtable', 'roundtable'),
-        ('/v1/art/', 'art'), ('/api/v1/art/', 'art'),
     ]
     for _prefix, _feat in _ai_gates:
         if request.path.startswith(_prefix) and not _ai_feature_enabled(_feat):
@@ -189,7 +184,7 @@ def require_auth(f):
 
 # ============ AI 服务统一设置（设置页管理）============
 AI_SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ai_settings.json')
-AI_FEATURES = {'explain': 'AI 诗词解读', 'roundtable': '诗人圆桌', 'art': 'AI 画作'}
+AI_FEATURES = {'explain': 'AI 诗词解读', 'roundtable': '诗人圆桌'}
 
 
 def _load_ai_settings():
