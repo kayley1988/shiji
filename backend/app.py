@@ -2435,22 +2435,30 @@ def galaxy_poets():
 @app.route('/api/v1/galaxy/poems', methods=['GET'])
 @app.route('/v1/galaxy/poems', methods=['GET'])
 def galaxy_author_poems():
-    """点星取某位作者的代表作（最多 20 首，各取前 8 句并拼好标点）"""
+    """点星取某位作者的代表作（limit 首上限 100，各取 lines 句并拼好标点）"""
     name = (request.args.get('author') or '').strip()
     if not name:
         return jsonify({'error': 'MISSING_AUTHOR', 'message': '缺少 author 参数'}), 400
+    try:
+        plimit = min(100, max(1, int(request.args.get('limit', 20))))
+    except ValueError:
+        plimit = 20
+    try:
+        lcap = min(60, max(2, int(request.args.get('lines', 8))))
+    except ValueError:
+        lcap = 8
     db = Session()
     try:
         rows = db.execute(_sqltext(
-            "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 20"),
-            {'a': name}).fetchall()
+            "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT :lim"),
+            {'a': name, 'lim': plimit}).fetchall()
         total = db.execute(_sqltext(
             "SELECT COUNT(*) FROM poems WHERE author = :a"), {'a': name}).scalar()
         if not rows:
             for raw in _resolve_poets([name]):
                 rows = db.execute(_sqltext(
-                    "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 20"),
-                    {'a': raw}).fetchall()
+                    "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT :lim"),
+                    {'a': raw, 'lim': plimit}).fetchall()
                 total = db.execute(_sqltext(
                     "SELECT COUNT(*) FROM poems WHERE author = :a"), {'a': raw}).scalar()
                 if rows:
@@ -2459,7 +2467,7 @@ def galaxy_author_poems():
         for pid, title in rows:
             lines = [r[0] for r in db.execute(_sqltext(
                 "SELECT content FROM poem_lines WHERE poem_id = :pid AND review_status = 'APPROVED' "
-                "ORDER BY line_no LIMIT 8"), {'pid': pid}).fetchall()]
+                "ORDER BY line_no LIMIT :lc"), {'pid': pid, 'lc': lcap}).fetchall()]
             simp = [to_simplified(l) for l in lines]
             couplets = []
             for i in range(0, len(simp), 2):

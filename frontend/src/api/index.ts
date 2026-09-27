@@ -485,7 +485,7 @@ export const api = {
   getGalaxyPoets: () =>
     http.get('/v1/galaxy/poets'),
 
-  // 点星取作者代表作
-  getGalaxyAuthorPoems: (author: string) =>
-    http.get('/v1/galaxy/poems', { params: { author } })
+  // 点星取作者代表作（limit 诗数上限100，lines 每首句数上限60）
+  getGalaxyAuthorPoems: (author: string, limit?: number, lines?: number) =>
+    http.get('/v1/galaxy/poems', { params: { author, limit, lines } })
 }

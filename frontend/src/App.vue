@@ -54,8 +54,8 @@ function onSplashDone() {
   // 启动页消失后可做一些初始化
 }
 
-// 所有页面都显示顶部导航栏
-const showNav = computed(() => true)
+// 星图为全屏沉浸页，隐藏全局导航（页内自带返回/搜索）
+const showNav = computed(() => route.name !== 'Galaxy')
 
 // 动态页面标题
 const titleMap: Record<string, string> = {

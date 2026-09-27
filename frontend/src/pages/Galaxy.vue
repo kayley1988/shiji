@@ -53,6 +53,9 @@
     <div class="g-tools">
       <div class="tool" :class="{ on: labelsOn }" @click="toggleLabels">星名</div>
       <div class="tool" @click="resetView">复位</div>
+      <div class="tool" :class="{ on: goldenLines.length }" @click="collectionOpen = true">
+        金句集{{ goldenLines.length ? `(${goldenLines.length})` : '' }}
+      </div>
     </div>
 
     <!-- 底部操作提示 -->
@@ -82,7 +85,72 @@
           共 {{ authorTotal }} 首 · 已展示前 {{ authorPoems.length }} 首
         </div>
       </div>
+      <div v-if="selected" class="panel-actions" @click="openReader">⛶ 全屏品读 · 摘金句</div>
     </div>
+
+    <!-- 全屏品读 -->
+    <div v-if="readerOpen" class="g-reader">
+      <div class="rd-top">
+        <div class="rd-name">{{ selected?.name }}</div>
+        <div class="rd-dyn" :style="{ background: dynColorOf(selected?.dynasty) }">{{ selected?.dynasty }}</div>
+        <span class="rd-meta">存诗 {{ authorTotal }} 首 · 点击诗句即可摘为金句</span>
+        <div class="rd-close" @click="readerOpen = false">×</div>
+      </div>
+      <div class="rd-body">
+        <div v-if="readerLoading" class="rd-tip">正在取全卷…</div>
+        <div v-for="(pm, i) in readerPoems" :key="i" class="rd-poem">
+          <div class="rd-title">{{ pm.title }}</div>
+          <div class="rd-lines">
+            <div
+              v-for="(ln, j) in pm.lines"
+              :key="j"
+              class="rd-line"
+              :class="{ picked: isPicked(ln) }"
+              @click="toggleLine(pm.title, ln)"
+            >{{ ln }}</div>
+            <div v-if="!pm.lines.length" class="rd-line none">暂无已审核诗句</div>
+          </div>
+        </div>
+        <div v-if="!readerLoading && !readerPoems.length" class="rd-tip">暂无已审核诗句</div>
+      </div>
+      <div class="rd-tray">
+        <template v-if="picked.length">
+          <span class="tray-count">已摘 {{ picked.length }} 句</span>
+          <div class="tray-btn" @click="copyPicked">复制</div>
+          <div class="tray-btn gold" @click="savePicked">收入金句集</div>
+          <div class="tray-btn ghost" @click="picked = []">清空</div>
+        </template>
+        <span v-else class="tray-hint">点击心仪的诗句，摘录为金句</span>
+      </div>
+    </div>
+
+    <!-- 金句集 -->
+    <div v-if="collectionOpen" class="g-collect">
+      <div class="cl-head">
+        <span class="cl-title">金句集 · {{ goldenLines.length }} 句</span>
+        <div class="cl-actions">
+          <div v-if="goldenLines.length" class="tray-btn" @click="copyAllGolden">复制全部</div>
+          <div v-if="goldenLines.length" class="tray-btn ghost" @click="clearGolden">清空</div>
+          <div class="rd-close" @click="collectionOpen = false">×</div>
+        </div>
+      </div>
+      <div class="cl-body">
+        <div v-if="!goldenLines.length" class="rd-tip">
+          还没有金句。点开一颗星，进入全屏品读，点击诗句摘录。
+        </div>
+        <div v-for="(g, i) in goldenLines" :key="i" class="cl-item">
+          <div class="cl-text">「{{ g.text }}」</div>
+          <div class="cl-src">{{ g.author }} · {{ g.dynasty }}《{{ g.title }}》</div>
+          <div class="cl-ops">
+            <span @click="copyOneGolden(g)">复制</span>
+            <span @click="removeGolden(i)">删除</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div v-if="toastMsg" class="g-toast">{{ toastMsg }}</div>
   </div>
 </template>
 
@@ -103,6 +171,13 @@ interface AuthorPoem {
   title: string
   lines: string[]
   open?: boolean
+}
+interface GoldenLine {
+  text: string
+  author: string
+  dynasty: string
+  title: string
+  ts: number
 }
 
 // ---------- 暗夜鎏金配色 ----------
@@ -167,6 +242,17 @@ const authorPoems = ref<AuthorPoem[]>([])
 const authorTotal = ref(0)
 const poemsLoading = ref(false)
 const legend = ref<{ key: string; color: string; count: number }[]>([])
+
+// 全屏品读 + 金句集
+const GKEY = 'shiji_golden_lines'
+const readerOpen = ref(false)
+const readerPoems = ref<AuthorPoem[]>([])
+const readerLoading = ref(false)
+const picked = ref<{ text: string; title: string }[]>([])
+const collectionOpen = ref(false)
+const goldenLines = ref<GoldenLine[]>([])
+const toastMsg = ref('')
+let toastTimer = 0
 
 let poets: GalaxyPoet[] = []
 let scene: THREE.Scene | null = null
@@ -399,6 +485,94 @@ async function openPoet(p: GalaxyPoet, sprite: THREE.Sprite) {
 }
 function closePanel() { selected.value = null; authorPoems.value = []; authorTotal.value = 0 }
 
+// ---------- 全屏品读 ----------
+async function openReader() {
+  if (!selected.value) return
+  readerOpen.value = true
+  readerLoading.value = true
+  readerPoems.value = []
+  picked.value = []
+  try {
+    const res: any = await api.getGalaxyAuthorPoems(selected.value.id, 60, 40)
+    readerPoems.value = (res.data?.poems || []) as AuthorPoem[]
+  } catch {
+    readerPoems.value = []
+  } finally {
+    readerLoading.value = false
+  }
+}
+function isPicked(text: string) { return picked.value.some(p => p.text === text) }
+function toggleLine(title: string, text: string) {
+  const i = picked.value.findIndex(p => p.text === text)
+  if (i >= 0) picked.value.splice(i, 1)
+  else picked.value.push({ text, title })
+}
+
+// ---------- 剪贴板 / 金句集 ----------
+async function copyText(s: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(s)
+    return true
+  } catch {
+    // localhost 之外或权限受限时的兜底
+    const ta = document.createElement('textarea')
+    ta.value = s
+    ta.style.position = 'fixed'
+    ta.style.opacity = '0'
+    document.body.appendChild(ta)
+    ta.select()
+    let ok = false
+    try { ok = document.execCommand('copy') } catch { ok = false }
+    ta.remove()
+    return ok
+  }
+}
+function toast(m: string) {
+  toastMsg.value = m
+  window.clearTimeout(toastTimer)
+  toastTimer = window.setTimeout(() => { toastMsg.value = '' }, 1800)
+}
+function fmtLine(text: string, title: string, author: string, dynasty: string) {
+  return `「${text}」——${author}（${dynasty}）《${title}》`
+}
+async function copyPicked() {
+  if (!selected.value) return
+  const s = picked.value.map(p => fmtLine(p.text, p.title, selected.value!.name, selected.value!.dynasty)).join('\n')
+  toast(await copyText(s) ? `已复制 ${picked.value.length} 句到剪贴板` : '复制失败，请手动选择文本')
+}
+function savePicked() {
+  if (!selected.value) return
+  const add: GoldenLine[] = picked.value
+    .filter(p => !goldenLines.value.some(g => g.text === p.text))
+    .map(p => ({
+      text: p.text, author: selected.value!.name,
+      dynasty: selected.value!.dynasty, title: p.title, ts: Date.now()
+    }))
+  goldenLines.value = [...add, ...goldenLines.value]
+  try { localStorage.setItem(GKEY, JSON.stringify(goldenLines.value)) } catch { /* 存储满忽略 */ }
+  toast(add.length ? `已收入金句集 ${add.length} 句` : '这些句子已在金句集中')
+}
+function loadGolden() {
+  try { goldenLines.value = JSON.parse(localStorage.getItem(GKEY) || '[]') } catch { goldenLines.value = [] }
+}
+function persistGolden() {
+  try { localStorage.setItem(GKEY, JSON.stringify(goldenLines.value)) } catch { /* 忽略 */ }
+}
+function removeGolden(i: number) { goldenLines.value.splice(i, 1); persistGolden() }
+function clearGolden() {
+  if (!goldenLines.value.length) return
+  goldenLines.value = []
+  persistGolden()
+  toast('金句集已清空')
+}
+async function copyOneGolden(g: GoldenLine) {
+  toast(await copyText(fmtLine(g.text, g.title, g.author, g.dynasty)) ? '已复制' : '复制失败')
+}
+async function copyAllGolden() {
+  const s = goldenLines.value.map(g => fmtLine(g.text, g.title, g.author, g.dynasty)).join('\n')
+  toast(await copyText(s) ? `已复制 ${goldenLines.value.length} 句` : '复制失败')
+}
+
 function focusOn(sprite: THREE.Sprite) {
   if (!camera) return
   const world = sprite.getWorldPosition(new THREE.Vector3())
@@ -456,6 +630,11 @@ function ensureLabelEls() {
   })
 }
 function updateLabels() {
+  if (readerOpen.value) {
+    // 全屏品读时隐藏所有星名，避免穿透正文
+    labelEls.forEach(l => { l.style.display = 'none' })
+    return
+  }
   if (!labelsOn.value || !camera || !controls) return
   const cam = camera
   const dist = camera.position.distanceTo(controls.target)
@@ -486,6 +665,13 @@ function onResize() {
   camera.aspect = innerWidth / innerHeight
   camera.updateProjectionMatrix()
   renderer.setSize(innerWidth, innerHeight)
+}
+
+// ESC 关闭全屏品读 / 金句集
+function onGlobalKey(e: KeyboardEvent) {
+  if (e.key !== 'Escape') return
+  if (readerOpen.value) readerOpen.value = false
+  else if (collectionOpen.value) collectionOpen.value = false
 }
 
 // ---------- 主循环 ----------
@@ -560,6 +746,7 @@ async function init() {
   ensureLabelEls()
 
   window.addEventListener('resize', onResize)
+  window.addEventListener('keydown', onGlobalKey)
   renderer.domElement.addEventListener('pointermove', onPointerMove)
   renderer.domElement.addEventListener('click', onClick)
 
@@ -571,12 +758,16 @@ async function init() {
   animate()
 }
 
-onMounted(init)
+onMounted(() => {
+  loadGolden()
+  init()
+})
 
 onBeforeUnmount(() => {
   disposed = true
   cancelAnimationFrame(rafId)
   window.removeEventListener('resize', onResize)
+  window.removeEventListener('keydown', onGlobalKey)
   labelEls.forEach(l => l.remove())
   if (renderer) {
     renderer.domElement.removeEventListener('pointermove', onPointerMove)
@@ -656,7 +847,7 @@ onBeforeUnmount(() => {
 
 /* 图例 */
 .g-legend {
-  position: absolute; left: 20px; bottom: 52px; z-index: 20;
+  position: absolute; left: 20px; bottom: 52px; z-index: 25;
   display: flex; flex-direction: column; gap: 6px;
   padding: 12px 16px;
   background: rgba(30, 34, 43, 0.85);
@@ -669,7 +860,7 @@ onBeforeUnmount(() => {
 
 /* 工具开关 */
 .g-tools {
-  position: absolute; right: 20px; bottom: 52px; z-index: 20;
+  position: absolute; right: 20px; bottom: 52px; z-index: 25;
   display: flex; gap: 8px;
 }
 .g-tools .tool {
@@ -738,6 +929,137 @@ onBeforeUnmount(() => {
   font-size: 13px; line-height: 2.0; color: var(--ink, #D9D4C5);
 }
 .poem .pc .no-lines { color: var(--ink-mist, #847F6E); font-size: 12px; }
+.panel-actions {
+  margin-top: 16px; padding: 10px 0; text-align: center;
+  border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
+  color: #14161B; background: linear-gradient(135deg, #E9CB6B, #D4AF37);
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.35);
+  transition: filter 0.2s;
+}
+.panel-actions:hover { filter: brightness(1.08); }
+
+/* ---------- 全屏品读 ---------- */
+.g-reader {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; flex-direction: column;
+  background: #14161b;
+}
+.rd-top {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 28px 14px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+  background: linear-gradient(to bottom, rgba(30, 34, 43, 0.7), transparent);
+}
+.rd-name { font-size: 26px; font-weight: 700; color: var(--ink-dark, #F2ECDA); }
+.rd-dyn {
+  padding: 3px 12px; border-radius: 12px;
+  font-size: 12px; font-weight: 600; color: #14161B;
+}
+.rd-meta { font-size: 12px; color: var(--ink-mist, #847F6E); }
+.rd-close {
+  margin-left: auto; width: 32px; height: 32px; line-height: 30px; text-align: center;
+  border-radius: 50%; font-size: 20px; cursor: pointer; user-select: none;
+  color: var(--ink-light, #ABA694); border: 1px solid rgba(212, 175, 55, 0.3);
+}
+.rd-close:hover { color: var(--cinnabar, #D4AF37); border-color: var(--cinnabar, #D4AF37); }
+.rd-body { flex: 1; overflow-y: auto; padding: 20px 28px 130px; }
+.rd-body::-webkit-scrollbar { width: 6px; }
+.rd-body::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 3px; }
+.rd-tip { text-align: center; padding: 40px 0; font-size: 14px; color: var(--ink-mist, #847F6E); }
+.rd-poem {
+  max-width: 760px; margin: 0 auto 22px; padding: 16px 24px;
+  border-radius: 12px; background: var(--card, #1E222B);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+}
+.rd-title {
+  font-size: 16px; font-weight: 700; margin-bottom: 10px;
+  color: var(--cinnabar-light, #E9CB6B);
+  border-left: 3px solid var(--cinnabar, #D4AF37); padding-left: 10px;
+}
+.rd-lines { display: flex; flex-direction: column; }
+.rd-line {
+  padding: 4px 8px; border-radius: 6px; cursor: pointer; user-select: none;
+  font-size: 15px; line-height: 2.1; color: var(--ink, #D9D4C5);
+  transition: background 0.15s, color 0.15s;
+}
+.rd-line:hover { background: rgba(212, 175, 55, 0.1); color: var(--cinnabar-light, #E9CB6B); }
+.rd-line.picked {
+  background: rgba(212, 175, 55, 0.14);
+  color: var(--cinnabar-light, #E9CB6B); font-weight: 600;
+  text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+}
+.rd-line.picked::after { content: ' ✦'; color: var(--cinnabar, #D4AF37); font-size: 12px; }
+.rd-line.none { color: var(--ink-mist, #847F6E); cursor: default; font-size: 13px; }
+.rd-line.none::after { content: none; }
+
+/* 摘句托盘 */
+.rd-tray {
+  position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
+  z-index: 55; display: flex; align-items: center; gap: 10px;
+  padding: 10px 18px; border-radius: 24px;
+  background: rgba(30, 34, 43, 0.95);
+  border: 1px solid rgba(212, 175, 55, 0.4);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px); white-space: nowrap;
+}
+.tray-count { font-size: 13px; font-weight: 600; color: var(--cinnabar-light, #E9CB6B); }
+.tray-hint { font-size: 13px; color: var(--ink-mist, #847F6E); }
+.tray-btn {
+  padding: 6px 16px; border-radius: 16px; font-size: 13px; cursor: pointer;
+  color: var(--ink, #D9D4C5); background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.4); user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+.tray-btn:hover { background: rgba(212, 175, 55, 0.25); color: var(--cinnabar-light, #E9CB6B); }
+.tray-btn.gold {
+  color: #14161B; font-weight: 600;
+  background: linear-gradient(135deg, #E9CB6B, #D4AF37);
+  border-color: transparent;
+}
+.tray-btn.gold:hover { filter: brightness(1.08); background: linear-gradient(135deg, #E9CB6B, #D4AF37); }
+.tray-btn.ghost { background: transparent; border-color: rgba(212, 175, 55, 0.25); color: var(--ink-mist, #847F6E); }
+
+/* ---------- 金句集抽屉 ---------- */
+.g-collect {
+  position: absolute; top: 0; right: 0; bottom: 0; z-index: 45;
+  width: 400px; display: flex; flex-direction: column;
+  background: rgba(25, 28, 35, 0.97);
+  border-left: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.45);
+  animation: clIn 0.3s ease;
+}
+@keyframes clIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
+.cl-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 20px; border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+}
+.cl-title { font-size: 16px; font-weight: 700; color: var(--cinnabar-light, #E9CB6B); letter-spacing: 1px; }
+.cl-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.cl-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.cl-body::-webkit-scrollbar { width: 6px; }
+.cl-body::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 3px; }
+.cl-item {
+  position: relative; margin-bottom: 14px; padding: 12px 14px;
+  border-radius: 10px; background: var(--card, #1E222B);
+  border: 1px solid rgba(212, 175, 55, 0.18);
+}
+.cl-text { font-size: 14px; line-height: 1.9; color: var(--ink, #D9D4C5); }
+.cl-src { margin-top: 6px; font-size: 12px; color: var(--ink-mist, #847F6E); }
+.cl-ops { margin-top: 8px; display: flex; gap: 14px; }
+.cl-ops span { font-size: 12px; color: var(--ink-light, #ABA694); cursor: pointer; user-select: none; }
+.cl-ops span:hover { color: var(--cinnabar, #D4AF37); }
+
+/* Toast */
+.g-toast {
+  position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
+  z-index: 70; padding: 9px 22px; border-radius: 20px;
+  font-size: 13px; color: var(--cinnabar-light, #E9CB6B);
+  background: rgba(30, 34, 43, 0.96);
+  border: 1px solid rgba(212, 175, 55, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+  pointer-events: none; animation: toastIn 0.25s ease;
+}
+@keyframes toastIn { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
 /* 星名标签（动态创建，走全局样式，见下方非 scoped 块） */
 </style>
