@@ -78,6 +78,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./pages/Poets.vue')
   },
   {
+    path: '/galaxy',
+    name: 'Galaxy',
+    component: () => import('./pages/Galaxy.vue')
+  },
+  {
     path: '/zen',
     name: 'AmbientPoetry',
     component: () => import('./pages/AmbientPoetry.vue')

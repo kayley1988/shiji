@@ -169,6 +169,10 @@
           <van-icon name="award-o" size="18" />
           <span>徽章馆</span>
         </div>
+        <div class="sub-card" @click="$router.push('/galaxy')">
+          <van-icon name="star-o" size="18" />
+          <span>诗云星图</span>
+        </div>
         <div class="sub-card" @click="$router.push('/zen')">
           <van-icon name="flower-o" size="18" />
           <span>静心诗境</span>

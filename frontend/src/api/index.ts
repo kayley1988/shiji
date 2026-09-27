@@ -475,5 +475,17 @@ export const api = {
 
   // 保存练习统计
   saveSoloStats: (data: any) =>
-    http.post('/v1/solo/stats', data)
+    http.post('/v1/solo/stats', data),
+
+  // ═══════════════════════════════════════════════════════
+  // 诗云星图（3D Galaxy）
+  // ═══════════════════════════════════════════════════════
+
+  // 全量诗人（作者/朝代/作品数）
+  getGalaxyPoets: () =>
+    http.get('/v1/galaxy/poets'),
+
+  // 点星取作者代表作
+  getGalaxyAuthorPoems: (author: string) =>
+    http.get('/v1/galaxy/poems', { params: { author } })
 }

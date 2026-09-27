@@ -133,6 +133,8 @@ PUBLIC_PATHS = [
     '/v1/solo/poems',       # 飞花令诗句
     '/v1/daily-theme',      # 每日主题
     '/v1/challenge',        # 题库闯关（公开）
+    '/v1/galaxy',           # 诗云星图（公开）
+    '/api/v1/galaxy',       # 诗云星图（公开）
     '/v1/badges',           # 徽章
     '/v1/me',              # 个人中心
     '/v1/rooms',            # 房间列表
@@ -2398,6 +2400,69 @@ def _db_form_counts():
     return dict(rows)
 
 
+# ---------- 诗云星图（3D Galaxy） ----------
+
+@_lru(maxsize=1)
+def _galaxy_poets_payload():
+    """全库作者聚合：作者 / 朝代 / 作品数（名气），进程内缓存"""
+    db = Session()
+    try:
+        rows = db.execute(_sqltext(
+            "SELECT author, dynasty, COUNT(*) c FROM poems "
+            "WHERE author IS NOT NULL AND author != '' "
+            "GROUP BY author, dynasty ORDER BY c DESC")).fetchall()
+    finally:
+        db.close()
+    poets = []
+    for a, d, c in rows:
+        poets.append({'id': a, 'name': to_simplified(a), 'dynasty': d or '未知', 'count': c})
+    return poets
+
+
+@app.route('/api/v1/galaxy/poets', methods=['GET'])
+@app.route('/v1/galaxy/poets', methods=['GET'])
+def galaxy_poets():
+    """星图全量诗人（前端做坐标/大小映射）"""
+    poets = _galaxy_poets_payload()
+    db = Session()
+    try:
+        total = db.execute(_sqltext("SELECT COUNT(*) FROM poems")).scalar()
+    finally:
+        db.close()
+    return jsonify({'data': {'poets': poets, 'total_poets': len(poets), 'total_poems': total}})
+
+
+@app.route('/api/v1/galaxy/poems', methods=['GET'])
+@app.route('/v1/galaxy/poems', methods=['GET'])
+def galaxy_author_poems():
+    """点星取某位作者的代表作（最多 5 首，各取前 4 句）"""
+    name = (request.args.get('author') or '').strip()
+    if not name:
+        return jsonify({'error': 'MISSING_AUTHOR', 'message': '缺少 author 参数'}), 400
+    db = Session()
+    try:
+        rows = db.execute(_sqltext(
+            "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 5"),
+            {'a': name}).fetchall()
+        if not rows:
+            for raw in _resolve_poets([name]):
+                rows = db.execute(_sqltext(
+                    "SELECT id, title FROM poems WHERE author = :a ORDER BY title LIMIT 5"),
+                    {'a': raw}).fetchall()
+                if rows:
+                    break
+        out = []
+        for pid, title in rows:
+            lines = db.execute(_sqltext(
+                "SELECT content FROM poem_lines WHERE poem_id = :pid AND review_status = 'APPROVED' "
+                "ORDER BY line_no LIMIT 4"), {'pid': pid}).fetchall()
+            out.append({'id': pid, 'title': to_simplified(title),
+                        'lines': [to_simplified(l[0]) for l in lines]})
+        return jsonify({'data': {'author': to_simplified(name), 'poems': out}})
+    finally:
+        db.close()
+
+
 @app.route('/v1/challenge/dimensions', methods=['GET'])
 def challenge_dimensions():
     """题库维度：朝代 / 派系 / 主题意象 / 诗歌形式（实时查库）"""
@@ -2599,4 +2664,5 @@ if __name__ == '__main__':
     print("=" * 50)
     print("API: http://localhost:5000/")
     # 使用标准 Flask 服务器 (Werkzeug) 避免 eventlet 问题
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    import os as _os
+    app.run(host='0.0.0.0', port=int(_os.environ.get('PORT', 5000)), debug=False)
