@@ -110,6 +110,7 @@ PUBLIC_PATHS = [
     '/v1/auth/anonymous',
     '/v1/auth/login',
     '/v1/auth/register',
+    '/v1/ai/settings',       # AI 统一设置（GET 只读状态；POST 自带登录校验）
     '/v1/poems/random',      # 随机诗词预览
     '/v1/poems/daily',       # 每日推荐
     '/v1/library/dynasties', # 朝代列表（公开）
@@ -185,49 +186,17 @@ def require_auth(f):
     return decorated
 
 
-# ============ AI 服务统一设置（设置页管理）============
-AI_SETTINGS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ai_settings.json')
-AI_FEATURES = {'explain': 'AI 诗词解读', 'roundtable': '诗人圆桌'}
-
-
-def _load_ai_settings():
-    try:
-        with open(AI_SETTINGS_FILE, encoding='utf-8') as f:
-            data = json.load(f)
-    except Exception:
-        data = {}
-    feats = {k: bool(data.get('features', {}).get(k, True)) for k in AI_FEATURES}
-    return {'features': feats}
-
-
-def _save_ai_settings(settings):
-    with open(AI_SETTINGS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(settings, f, ensure_ascii=False, indent=2)
-
-
-def _ai_feature_enabled(feature):
-    return _load_ai_settings()['features'].get(feature, True)
-
-
-def _update_env_key(key_name, value):
-    """更新 backend/.env 中的键（不存在则追加），并同步 os.environ"""
-    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
-    lines = []
-    if os.path.exists(env_path):
-        with open(env_path, encoding='utf-8') as f:
-            lines = f.read().splitlines()
-    replaced = False
-    for i, line in enumerate(lines):
-        if line.strip().startswith(f'{key_name}=') or line.strip().startswith(f'# {key_name}='):
-            lines[i] = f'{key_name}={value}'
-            replaced = True
-            break
-    if not replaced:
-        lines.append(f'{key_name}={value}')
-    with open(env_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines) + '\n')
-    os.environ[key_name] = value
-    setattr(Config, key_name, value)
+# ============ AI 服务统一接入（全部走 ai_hub，见 ai_hub.py）============
+from ai_hub import (
+    FEATURES as AI_FEATURES,
+    load_settings as _load_ai_settings,
+    save_settings as _save_ai_settings,
+    feature_enabled as _ai_feature_enabled,
+    update_env_key as _update_env_key,
+    get_api_key as _get_ai_key,
+    chat as _ai_chat,
+    AIError as _AIError,
+)
 
 
 @app.route('/v1/ai/settings', methods=['GET', 'POST'])
@@ -238,7 +207,7 @@ def ai_settings_route():
         s = _load_ai_settings()
         return jsonify({'data': {
             'provider': 'DeepSeek',
-            'key_configured': bool(os.environ.get('DEEPSEEK_API_KEY') or Config.DEEPSEEK_API_KEY),
+            'key_configured': bool(_get_ai_key()),
             'features': s['features'],
             'feature_names': AI_FEATURES,
         }})
@@ -261,7 +230,7 @@ def ai_settings_route():
     if new_key:
         if not new_key.startswith('sk-'):
             return jsonify({'code': 400, 'message': 'DeepSeek Key 格式不正确（应以 sk- 开头）'}), 400
-        _update_env_key('DEEPSEEK_API_KEY', new_key)
+        _update_env_key(new_key)
         key_msg = 'DeepSeek Key 已更新'
 
     return jsonify({'data': {'features': s['features'], 'key_configured': True, 'message': key_msg or '设置已保存'}})
@@ -1578,11 +1547,11 @@ def ai_poem_explain():
     if not poem:
         return jsonify({'code': 400, 'message': '缺少 poem 参数'}), 400
 
-    api_key = os.environ.get('DEEPSEEK_API_KEY') or Config.DEEPSEEK_API_KEY
+    api_key = _get_ai_key()
     if not api_key:
         return jsonify({
             'code': 500, 'message': 'AI 服务未配置',
-            'data': {'content': 'AI 解读服务正在配置中，请稍后再试。'}
+            'data': {'content': 'AI 服务还没配置 Key。请到「我的 → AI 设置」里填入 DeepSeek Key，即可开启解读。'}
         })
 
     # ── 作者作品集：从库中查该作者其他代表作（可点击跳转）──
@@ -1648,27 +1617,14 @@ def ai_poem_explain():
 要求：每个板块都要充实具体，赏析要有洞见；避免"情景交融""意境优美"这类空话；总篇幅不少于 800 字。"""
 
     try:
-        import urllib.request
-        req = urllib.request.Request(
-            'https://api.deepseek.com/chat/completions',
-            data=json.dumps({
-                'model': 'deepseek-chat',
-                'messages': [
-                    {'role': 'system', 'content': '你是一位博古通今的中国古典文学学者，擅长诗词考据与深度鉴赏，行文严谨而富有文气。'},
-                    {'role': 'user', 'content': prompt}
-                ],
-                'temperature': 0.7,
-                'max_tokens': 2200,
-            }).encode('utf-8'),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {api_key}',
-            },
-            method='POST'
+        content = _ai_chat(
+            [
+                {'role': 'system', 'content': '你是一位博古通今的中国古典文学学者，擅长诗词考据与深度鉴赏，行文严谨而富有文气。'},
+                {'role': 'user', 'content': prompt}
+            ],
+            temperature=0.7,
+            max_tokens=2200,
         )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read().decode('utf-8'))
-        content = result['choices'][0]['message']['content']
         return jsonify({'code': 200, 'data': {
             'content': content,
             'author': author,
@@ -1780,7 +1736,7 @@ def poet_chat():
     if not card:
         return jsonify({'code': 404, 'message': '未找到该诗人'}), 404
 
-    api_key = os.environ.get('DEEPSEEK_API_KEY') or Config.DEEPSEEK_API_KEY
+    api_key = _get_ai_key()
     if not api_key:
         return jsonify({'code': 500, 'message': 'AI 服务未配置',
                         'data': {'reply': 'AI 服务正在配置中，请稍后再试。'}})
@@ -1807,24 +1763,7 @@ def poet_chat():
             chat_messages.append({'role': role, 'content': content})
 
     try:
-        import urllib.request
-        req = urllib.request.Request(
-            'https://api.deepseek.com/chat/completions',
-            data=json.dumps({
-                'model': 'deepseek-chat',
-                'messages': chat_messages,
-                'temperature': 0.9,
-                'max_tokens': 600,
-            }).encode('utf-8'),
-            headers={
-                'Content-Type': 'application/json',
-                'Authorization': f'Bearer {api_key}',
-            },
-            method='POST'
-        )
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            result = json.loads(resp.read().decode('utf-8'))
-        reply = result['choices'][0]['message']['content']
+        reply = _ai_chat(chat_messages, temperature=0.9, max_tokens=600)
         return jsonify({'code': 200, 'data': {'reply': reply}})
     except Exception as e:
         return jsonify({
@@ -1833,26 +1772,9 @@ def poet_chat():
         })
 
 
-def _deepseek_reply(chat_messages, api_key, max_tokens=600, temperature=0.9):
-    """调用 DeepSeek chat completions，返回回复文本"""
-    import urllib.request
-    req = urllib.request.Request(
-        'https://api.deepseek.com/chat/completions',
-        data=json.dumps({
-            'model': 'deepseek-chat',
-            'messages': chat_messages,
-            'temperature': temperature,
-            'max_tokens': max_tokens,
-        }).encode('utf-8'),
-        headers={
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {api_key}',
-        },
-        method='POST'
-    )
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        result = json.loads(resp.read().decode('utf-8'))
-    return result['choices'][0]['message']['content']
+def _deepseek_reply(chat_messages, api_key=None, max_tokens=600, temperature=0.9):
+    """调用 DeepSeek chat completions（经 ai_hub 统一出口），返回回复文本"""
+    return _ai_chat(chat_messages, max_tokens=max_tokens, temperature=temperature)
 
 
 @app.route('/v1/poet/roundtable', methods=['POST'])
@@ -1872,7 +1794,7 @@ def poet_roundtable():
         return jsonify({'code': 404, 'message': '未找到足够的诗人'}), 404
     cards = sorted(cards, key=lambda c: poet_ids.index(c['id']))
 
-    api_key = os.environ.get('DEEPSEEK_API_KEY') or Config.DEEPSEEK_API_KEY
+    api_key = _get_ai_key()
     if not api_key:
         return jsonify({'code': 500, 'message': 'AI 服务未配置'}), 500
 
@@ -1955,7 +1877,7 @@ def poet_feihualing():
         return jsonify({'code': 404, 'message': '未找到足够的诗人'}), 404
     cards = sorted(cards, key=lambda c: poet_ids.index(c['id']))
 
-    api_key = os.environ.get('DEEPSEEK_API_KEY') or Config.DEEPSEEK_API_KEY
+    api_key = _get_ai_key()
     if not api_key:
         return jsonify({'code': 500, 'message': 'AI 服务未配置'}), 500
 
@@ -2100,18 +2022,16 @@ def get_ambient_poem():
         
         # AI 生成一段意境简介（沉浸式引导语）
         try:
-            from config import Config
-            api_key = Config.DEEPSEEK_API_KEY
             system_prompt = (
                 '你是诗语雅集的「静心引读师」。用户请求一段诗境引导语，'
                 '用于沉浸式冥想场景。请用 1-2 句话，以舒缓、温柔的语气描绘这首诗的意境，'
                 '像在对一个需要安静陪伴的人轻声说话。回复要简短（不超过 40 字），有意境，不评判。'
             )
             user_prompt = f'请为这首诗写一段静心引导语。诗题：《{row.title}》。诗句：{" / ".join(poem_lines[:4])}'
-            resp = _deepseek_reply(
+            resp = _ai_chat(
                 [{'role': 'system', 'content': system_prompt},
                  {'role': 'user', 'content': user_prompt}],
-                api_key, max_tokens=80, temperature=0.8
+                max_tokens=80, temperature=0.8
             )
             intro = resp.strip() if resp else '静下心来，听诗。'
         except Exception:

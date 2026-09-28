@@ -171,10 +171,15 @@
             <van-icon name="passed" size="20" color="var(--jade)" />
             <span>答对了！+5 经验</span>
           </div>
-          <div class="feedback-wrong" v-else>
-            <van-icon name="cross" size="20" color="var(--cinnabar)" />
-            <span>正确答案是「{{ currentQ.answer }}」</span>
-          </div>
+          <template v-else>
+            <div class="feedback-wrong">
+              <van-icon name="cross" size="20" color="var(--cinnabar)" />
+              <span>正确答案是「{{ currentQ.answer }}」</span>
+            </div>
+            <button class="ai-explain-btn" :disabled="explainLoading" @click="askExplain">
+              {{ explainLoading ? 'AI 品读中…' : '✨ AI 讲解这句诗' }}
+            </button>
+          </template>
         </div>
       </div>
 
@@ -260,6 +265,28 @@
         <van-button v-else type="primary" block round class="retry-btn" @click="handleRetry">再来一局</van-button>
         <van-button v-if="resultData?.cumulative" plain block round class="back-btn" @click="handleRetry">换个维度</van-button>
         <van-button plain block round class="back-btn" @click="$router.back()">返回首页</van-button>
+      </div>
+    </div>
+
+    <!-- AI 讲解弹层 -->
+    <div class="explain-mask" v-if="explainOpen" @click.self="explainOpen = false">
+      <div class="explain-card">
+        <div class="explain-head">
+          <span class="eh-title">✨ AI 诗词讲解</span>
+          <span class="eh-close" @click="explainOpen = false">✕</span>
+        </div>
+        <div class="explain-meta" v-if="currentQ">
+          {{ currentQ.title }} · {{ currentQ.author }}（{{ currentQ.dynasty }}）
+        </div>
+        <div class="explain-body">
+          <p v-if="explainLoading" class="explain-tip">墨香徐来，AI 正在品读这首诗…</p>
+          <template v-else>
+            <template v-for="(b, i) in explainBlocks" :key="i">
+              <h4 v-if="b.h" class="ex-h">{{ b.t }}</h4>
+              <p v-else class="ex-p">{{ b.t }}</p>
+            </template>
+          </template>
+        </div>
       </div>
     </div>
 
@@ -409,6 +436,7 @@ async function startBatch() {
     currentIdx.value = 0
     selectedOpt.value = ''
     showResult.value = false
+    explainOpen.value = false
     phase.value = 'playing'
   } catch (e: any) {
     startError.value = e?.response?.data?.error?.message || '启动失败，请换个维度试试'
@@ -455,6 +483,7 @@ function nextQuestion() {
     currentIdx.value++
     selectedOpt.value = ''
     showResult.value = false
+    explainOpen.value = false
   }
 }
 
@@ -517,6 +546,54 @@ async function submitChallenge() {
     showToast('提交失败')
   } finally {
     loading.value = false
+  }
+}
+
+// ── AI 讲解（答错时）──────────────────────────────────
+const explainOpen = ref(false)
+const explainLoading = ref(false)
+const explainText = ref('')
+const explainCache = new Map<string, string>()
+
+// 「## 标题 / 正文段落」轻量分段，渲染讲解内容
+const explainBlocks = computed(() =>
+  explainText.value
+    .split('\n')
+    .map(l => l.trim())
+    .filter(Boolean)
+    .map(l => ({ h: l.startsWith('##'), t: l.replace(/^#+\s*/, '') }))
+)
+
+async function askExplain() {
+  const q = currentQ.value
+  if (!q || explainLoading.value) return
+  const cacheKey = q.line_id
+  if (explainCache.has(cacheKey)) {
+    explainText.value = explainCache.get(cacheKey)!
+    explainOpen.value = true
+    return
+  }
+  explainLoading.value = true
+  explainOpen.value = true
+  try {
+    // 题干「」内为已知句，拼上正确答案构成完整上下文
+    const known = (q.question.match(/「(.+?)」/) || [])[1] || ''
+    const poemText = [known, q.answer].filter(Boolean).join('\n')
+    const res: any = await api.aiPoemExplain({
+      poem: poemText,
+      source: `${q.title} - ${q.author}`,
+      title: q.title,
+      author: q.author,
+      dynasty: q.dynasty,
+      poem_id: q.poem_id,
+    })
+    explainText.value = res.data?.content || '讲解生成失败，请稍后再试。'
+    explainCache.set(cacheKey, explainText.value)
+  } catch (e: any) {
+    const r = e?.response?.data
+    explainText.value = r?.data?.content || r?.message || '讲解请求失败，请稍后再试。'
+  } finally {
+    explainLoading.value = false
   }
 }
 
@@ -665,6 +742,42 @@ function handleRetry() {
 .q-feedback { text-align: center; padding: 8px 0; }
 .feedback-correct { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; color: var(--jade); }
 .feedback-wrong { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; color: var(--cinnabar); }
+
+/* AI 讲解入口 + 弹层 */
+.ai-explain-btn {
+  margin-top: 10px; padding: 8px 18px; border-radius: 18px;
+  background: rgba(212,175,55,0.10); border: 1px solid rgba(212,175,55,0.45);
+  color: var(--gold); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+}
+.ai-explain-btn:hover:not(:disabled) { background: rgba(212,175,55,0.2); }
+.ai-explain-btn:disabled { opacity: 0.55; cursor: wait; }
+
+.explain-mask {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(10, 11, 14, 0.72);
+  display: flex; align-items: center; justify-content: center; padding: 20px;
+}
+.explain-card {
+  width: 100%; max-width: 560px; max-height: 82vh;
+  display: flex; flex-direction: column;
+  background: var(--card, #1E222B); border-radius: 16px;
+  border: 1px solid rgba(212,175,55,0.35);
+  box-shadow: 0 12px 48px rgba(0,0,0,0.5);
+  overflow: hidden;
+}
+.explain-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 10px;
+}
+.eh-title { font-size: 15px; font-weight: 700; color: var(--gold); letter-spacing: 1px; }
+.eh-close { font-size: 16px; color: var(--stone); cursor: pointer; padding: 4px 8px; }
+.eh-close:hover { color: var(--ink); }
+.explain-meta { padding: 0 16px 10px; font-size: 12px; color: var(--stone); border-bottom: 1px solid var(--line); }
+.explain-body { padding: 14px 16px 20px; overflow-y: auto; line-height: 1.9; }
+.ex-h { font-size: 14px; font-weight: 700; color: var(--cinnabar-light, #E9CB6B); margin: 14px 0 6px; }
+.ex-h:first-child { margin-top: 0; }
+.ex-p { font-size: 13px; color: var(--ink); margin: 0 0 10px; white-space: pre-wrap; }
+.explain-tip { text-align: center; color: var(--stone); font-size: 14px; padding: 30px 0; }
 
 /* 操作按钮 */
 .play-actions { margin-top: 4px; }
