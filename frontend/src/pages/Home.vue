@@ -311,6 +311,14 @@ onMounted(loadData)
   inset: 0;
   background: linear-gradient(135deg, var(--paper-warm, #F5F1E8) 0%, var(--card, #FFFFFF) 100%);
   pointer-events: none;
+  z-index: 0;
+}
+/* 内容置于渐变遮罩之上，避免伪元素盖住文字 */
+.today-badge,
+.today-line,
+.today-meta {
+  position: relative;
+  z-index: 1;
 }
 .today-card:hover {
   transform: translateY(-2px);

@@ -1,6 +1,6 @@
 """探索页 API"""
 from flask import Blueprint, request, jsonify
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, scoped_session
 from models import Poem
 import random
@@ -20,7 +20,16 @@ def get_daily():
     
     random_offset = random.randint(0, max(0, count - 1))
     poem = Session.query(Poem).offset(random_offset).first()
-    
+
+    # 诗句内容在 poem_lines 表（poems 表无 content 字段），取首句作为今日推荐
+    line = ''
+    if poem:
+        row = Session.execute(
+            text('SELECT content FROM poem_lines WHERE poem_id = :pid ORDER BY line_no LIMIT 1'),
+            {'pid': poem.id}
+        ).fetchone()
+        line = row[0] if row else ''
+
     return jsonify({
         'success': True,
         'data': {
@@ -29,7 +38,8 @@ def get_daily():
                 'title': poem.title,
                 'author': poem.author,
                 'dynasty': poem.dynasty,
-                'content': getattr(poem, 'content', ''),
+                'line': line,
+                'content': line,
                 'tags': getattr(poem, 'tags', [])
             }] if poem else []
         }

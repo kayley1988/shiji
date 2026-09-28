@@ -10,6 +10,27 @@
 
 核心体验闭环：**对战 → 输赢 → 解锁诗句 → 文化延伸**
 
+## 界面速览
+
+| 首页 · 今日推荐 | 诗云 · 星图 |
+| --- | --- |
+| ![首页](docs/screenshots/home.png) | ![诗云星图](docs/screenshots/galaxy.png) |
+
+| 题库闯关 | 无尽连刷 |
+| --- | --- |
+| ![题库闯关](docs/screenshots/challenge.png) | ![无尽连刷](docs/screenshots/endless.png) |
+
+## 功能亮点
+
+- 🎴 **飞花令对战**：2-8 人实时对战，文字输入、计时判题、淘汰结算
+- 🌌 **诗云 · 星图**：5,200+ 位诗人按朝代铺成三条时间泳道（唐/宋/元），Three.js 3D 星体，点击诗人全屏品读原诗，金句一键摘录收藏
+- 📖 **诗集品读**：按朝代/诗人浏览全库诗集，支持 AI 诗词解读
+- 🏆 **题库闯关**：按朝代/诗人流派/主题意象/诗歌形式组题，答错有 AI 逐句讲解
+- ♾️ **无尽连刷**：10 题一组无缝续组，实时累计正确率与连对，随时结算
+- 🗓️ **节气主题**：今日推荐随二十四节气与节日智能变化
+
+> 星图页面的创意与交互形式借鉴自 [iithink88/shiyun](https://github.com/iithink88/shiyun)（Three.js 诗词星系），在其基础上重构为朝代时间轴泳道、接入真实诗集数据库并扩展全屏品读与金句集，特此致谢。
+
 ## 一期范围
 
 ### 核心功能
@@ -93,6 +114,17 @@ shiji/
 
 诗词数据来自 [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) 项目（MIT License）。
 
+## 致谢
+
+- [chinese-poetry](https://github.com/chinese-poetry/chinese-poetry) —— 诗词语料库
+- [iithink88/shiyun](https://github.com/iithink88/shiyun) —— 诗云星图的创意来源
+- [DeepSeek](https://platform.deepseek.com) —— AI 诗词解读与题库讲解
+
 ## License
 
 MIT
+
+## 补充截图
+
+- 截图位于 `docs/screenshots/`，可用 `docs/capture.js`（playwright-core + Edge 无头）重新生成。
+
