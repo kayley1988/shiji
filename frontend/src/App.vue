@@ -1,8 +1,8 @@
 <template>
   <div class="app bg-xuanzhi">
-    <!-- 全局启动页 -->
+    <!-- 全局启动页（点按可跳过；loadingStore 只负责步骤动画） -->
     <SplashScreen
-      v-if="loadingStore.phase !== 'done'"
+      v-if="!splashGone"
       @done="onSplashDone"
     />
 
@@ -42,20 +42,20 @@ const loadingStore = useLoadingStore()
 const authStore = useAuthStore()
 const route = useRoute()
 const drawerOpen = ref(false)
+const splashGone = ref(false)
 
-// 启动时：auth restore + loading 动画并行
+// 启动时：启动页动画与静默登录并行
 onMounted(() => {
-  loadingStore.start()
   // 静默后台登录，不阻塞启动页动画
   authStore.restore()
 })
 
 function onSplashDone() {
-  // 启动页消失后可做一些初始化
+  splashGone.value = true
 }
 
-// 星图为全屏沉浸页，隐藏全局导航（页内自带返回/搜索）
-const showNav = computed(() => route.name !== 'Galaxy')
+// 星图/学习仪表盘为沉浸页（页内自带返回导航），隐藏全局导航
+const showNav = computed(() => route.name !== 'Galaxy' && route.name !== 'ChallengeDashboard')
 
 // 动态页面标题
 const titleMap: Record<string, string> = {
@@ -72,6 +72,7 @@ const titleMap: Record<string, string> = {
   ColorPalette: '中国传统色',
   Poets: '诗人雅集',
   Challenge: '题库闯关',
+  ChallengeDashboard: '学习仪表盘',
 }
 const pageTitle = computed(() => titleMap[route.name as string] || '')
 </script>

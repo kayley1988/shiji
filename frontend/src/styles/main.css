@@ -95,6 +95,9 @@ html, body {
   line-height: 1.6;
 }
 
+/* 玄夜底色工具类（此前被多处引用但从未定义，导致启动页等背景透叠） */
+.bg-xuanzhi { background: var(--xuanzhi); }
+
 /* ── 滚动条美化 ──────────────────────────────── */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: var(--paper); }

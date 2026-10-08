@@ -26,6 +26,7 @@ from models import (
     Tag, SolarTerm, SolarTermKeyword, DailyTheme,
     UserFavorite, UserPoemUnlock, AuditEvent, ReviewStatus,
     Badge, UserBadge,
+    ChallengeRecord, ChallengeMistake, utcnow,
     init_db
 )
 from data.solar_terms import get_current_solar_term, SOLAR_TERMS
@@ -2467,8 +2468,8 @@ def _db_fetch_lines(db, poem_id):
         "ORDER BY CAST(line_no AS INTEGER)"), {'pid': poem_id}).fetchall()]
 
 
-def _db_gen_question(db, poem_row, distractor_pool, title_pool):
-    """一道题：随机取诗的一句（非末句考下一句，末句考出处）"""
+def _db_gen_question(db, poem_row, distractor_pool, title_pool, fixed_idx=None):
+    """一道题：随机取诗的一句（非末句考下一句，末句考出处）；fixed_idx 用于错题重练指定句"""
     pid, title, author, dynasty = poem_row
     lines = _db_fetch_lines(db, pid)
     if len(lines) < 2:
@@ -2476,7 +2477,10 @@ def _db_gen_question(db, poem_row, distractor_pool, title_pool):
     s_title, s_author = to_simplified(title), to_simplified(author)
     own = [to_simplified(l) for l in lines]
 
-    idx = _random.randrange(len(lines) - 1) if len(lines) > 2 and _random.random() < 0.8 else len(lines) - 1
+    if fixed_idx is not None:
+        idx = min(max(int(fixed_idx), 0), len(lines) - 1)
+    else:
+        idx = _random.randrange(len(lines) - 1) if len(lines) > 2 and _random.random() < 0.8 else len(lines) - 1
     if idx < len(lines) - 1:
         answer = own[idx + 1]
         q_text = f"「{own[idx]}」，下一句是？"
@@ -2552,21 +2556,38 @@ def challenge_start():
             return jsonify({'error': 'NO_POEMS', 'message': '该维度下暂时出不了题，请换个维度试试'}), 404
 
         session_id = secrets.token_hex(16)
-        challenge_sessions[session_id] = {'questions': questions}
+        challenge_sessions[session_id] = {'questions': questions, 'dynasty': payload.get('dynasty')}
         return jsonify({'data': {'session_id': session_id, 'questions': questions}})
     finally:
         db.close()
 
 
+def _dt_local_str(dt):
+    """UTC 时间/字符串转本地(UTC+8)日期字符串 YYYY-MM-DD"""
+    import datetime as _dt_mod
+    if isinstance(dt, str):
+        try:
+            dt = datetime.fromisoformat(dt.replace('Z', '+00:00'))
+        except ValueError:
+            return dt[:10]
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=_dt_mod.timezone.utc)
+    local = dt.astimezone(_dt_mod.timezone(_dt_mod.timedelta(hours=8)))
+    return local.strftime('%Y-%m-%d')
+
+
 @app.route('/api/v1/challenge/submit', methods=['POST'])
 @app.route('/v1/challenge/submit', methods=['POST'])
 def challenge_submit():
-    """提交闯关：服务端判分（不信任前端答案）"""
+    """提交闯关：服务端判分（不信任前端答案）；落库闯关记录与错题集"""
     payload = request.get_json(silent=True) or {}
     sid = payload.get('session_id')
     session = challenge_sessions.pop(sid, None)
     if not session:
         return jsonify({'error': 'SESSION_NOT_FOUND', 'message': '会话已过期，请重新开始'}), 404
+
+    user_id = (payload.get('user_id') or '').strip() or None
+    mode = (payload.get('mode') or 'classic').strip()[:20]
 
     answers = {a.get('line_id'): a.get('answer') for a in payload.get('answers', [])}
     results, correct = [], 0
@@ -2587,10 +2608,200 @@ def challenge_submit():
     total = len(session['questions'])
     score = correct * 10
     exp_gain = correct * 5
+
+    # ── 持久化：闯关记录 + 错题集（有 user_id 才记）──
+    if user_id:
+        try:
+            db = Session()
+            try:
+                db.add(ChallengeRecord(
+                    user_id=user_id, mode=mode, total=total, correct=correct,
+                    score=score, dynasty=session.get('dynasty'),
+                ))
+                for r in results:
+                    existing = db.query(ChallengeMistake).filter_by(
+                        user_id=user_id, line_id=r['line_id']).first()
+                    if r['correct']:
+                        if existing:
+                            db.delete(existing)   # 重练答对 → 移出错题集
+                    else:
+                        if existing:
+                            existing.wrong_count = (existing.wrong_count or 1) + 1
+                            existing.user_answer = r['user_answer']
+                            existing.mode = mode
+                            existing.last_wrong_at = utcnow()
+                        else:
+                            db.add(ChallengeMistake(
+                                user_id=user_id, line_id=r['line_id'],
+                                title=r['title'], author=r['author'],
+                                question=r['question'], user_answer=r['user_answer'],
+                                correct_answer=r['correct_answer'], mode=mode,
+                            ))
+                db.commit()
+            finally:
+                db.close()
+        except Exception as e:
+            logging.error(f"challenge persist error: {e}", exc_info=True)
+
     return jsonify({'data': {
         'total': total, 'correct': correct,
         'score': score, 'exp_gain': exp_gain, 'results': results,
     }})
+
+
+# ---------- 学习仪表盘（闯关统计 + 打卡日历 + 错题集） ----------
+
+@app.route('/api/v1/challenge/dashboard', methods=['GET'])
+@app.route('/v1/challenge/dashboard', methods=['GET'])
+def challenge_dashboard():
+    """学习仪表盘：统计卡 + 打卡日历 + 最近闯关"""
+    user_id = (request.args.get('user_id') or '').strip()
+    if not user_id:
+        return jsonify({'data': {'summary': {}, 'calendar': [], 'recent': []}})
+    try:
+        days = min(max(int(request.args.get('days', 84) or 84), 7), 366)
+    except (TypeError, ValueError):
+        days = 84
+
+    db = Session()
+    try:
+        rows = db.execute(_sqltext(
+            "SELECT total, correct, score, mode, dynasty, created_at "
+            "FROM challenge_records WHERE user_id = :uid "
+            "ORDER BY created_at DESC"), {'uid': user_id}).fetchall()
+
+        rounds = len(rows)
+        total_q = sum(r[0] or 0 for r in rows)
+        correct_q = sum(r[1] or 0 for r in rows)
+        best_score = max((r[2] or 0 for r in rows), default=0)
+        mistakes_open = db.execute(_sqltext(
+            "SELECT COUNT(*) FROM challenge_mistakes WHERE user_id = :uid"),
+            {'uid': user_id}).scalar()
+
+        # 打卡日历：按本地日期聚合
+        by_date = {}
+        for r in rows:
+            d = _dt_local_str(r[5])
+            agg = by_date.setdefault(d, {'rounds': 0, 'total': 0, 'correct': 0})
+            agg['rounds'] += 1
+            agg['total'] += r[0] or 0
+            agg['correct'] += r[1] or 0
+
+        today = datetime.now(timezone(timedelta(hours=8))).date()
+        calendar = []
+        for i in range(days - 1, -1, -1):
+            d = (today - timedelta(days=i)).isoformat()
+            agg = by_date.get(d)
+            calendar.append({
+                'date': d,
+                'rounds': agg['rounds'] if agg else 0,
+                'total': agg['total'] if agg else 0,
+                'correct': agg['correct'] if agg else 0,
+            })
+
+        recent = [{
+            'mode': r[3], 'dynasty': r[4], 'total': r[0],
+            'correct': r[1], 'score': r[2], 'created_at': _dt_local_str(r[5]),
+        } for r in rows[:12]]
+
+        return jsonify({'data': {
+            'summary': {
+                'rounds': rounds,
+                'total_questions': total_q,
+                'correct_questions': correct_q,
+                'accuracy': round(correct_q * 100.0 / total_q, 1) if total_q else 0,
+                'best_score': best_score,
+                'mistakes_open': mistakes_open,
+            },
+            'calendar': calendar,
+            'recent': recent,
+        }})
+    finally:
+        db.close()
+
+
+@app.route('/api/v1/challenge/mistakes', methods=['GET'])
+@app.route('/v1/challenge/mistakes', methods=['GET'])
+def challenge_mistakes():
+    """错题集列表"""
+    user_id = (request.args.get('user_id') or '').strip()
+    if not user_id:
+        return jsonify({'data': {'mistakes': []}})
+    try:
+        limit = min(max(int(request.args.get('limit', 100) or 100), 1), 300)
+    except (TypeError, ValueError):
+        limit = 100
+
+    db = Session()
+    try:
+        rows = db.execute(_sqltext(
+            "SELECT line_id, title, author, question, user_answer, correct_answer, "
+            "wrong_count, last_wrong_at FROM challenge_mistakes "
+            "WHERE user_id = :uid ORDER BY last_wrong_at DESC LIMIT :lim"),
+            {'uid': user_id, 'lim': limit}).fetchall()
+        mistakes = [{
+            'line_id': r[0], 'title': r[1], 'author': r[2],
+            'question': r[3], 'user_answer': r[4], 'correct_answer': r[5],
+            'wrong_count': r[6], 'last_wrong_at': _dt_local_str(r[7]),
+        } for r in rows]
+        return jsonify({'data': {'mistakes': mistakes}})
+    finally:
+        db.close()
+
+
+@app.route('/api/v1/challenge/mistake-quiz/start', methods=['POST'])
+@app.route('/v1/challenge/mistake-quiz/start', methods=['POST'])
+def challenge_mistake_quiz_start():
+    """错题重练：从错题集组题（沿用题库题型，固定考原句）"""
+    payload = request.get_json(silent=True) or {}
+    user_id = (payload.get('user_id') or '').strip()
+    if not user_id:
+        return jsonify({'error': 'MISSING_USER', 'message': '缺少用户标识'}), 400
+    try:
+        count = min(max(int(payload.get('count', 10) or 10), 3), 20)
+    except (TypeError, ValueError):
+        count = 10
+
+    db = Session()
+    try:
+        mistakes = db.execute(_sqltext(
+            "SELECT line_id, title, author, correct_answer FROM challenge_mistakes "
+            "WHERE user_id = :uid ORDER BY last_wrong_at DESC LIMIT :lim"),
+            {'uid': user_id, 'lim': count * 2}).fetchall()
+        if not mistakes:
+            return jsonify({'error': 'NO_MISTAKES', 'message': '错题集是空的，先去闯关吧'}), 404
+
+        # 干扰项池同普通出题
+        raw_lines = [to_simplified(r[0]) for r in db.execute(_sqltext(
+            "SELECT content FROM poem_lines WHERE review_status = 'APPROVED' "
+            "AND LENGTH(content) BETWEEN 3 AND 20 ORDER BY RANDOM() LIMIT 400")).fetchall()]
+        raw_titles = [to_simplified(r[0]) for r in db.execute(_sqltext(
+            "SELECT title FROM poems ORDER BY RANDOM() LIMIT 200")).fetchall()]
+
+        questions = []
+        for m in mistakes:
+            if len(questions) >= count:
+                break
+            pid, _, idx = m[0].rpartition('-')
+            if not pid:
+                continue
+            poem = db.execute(_sqltext(
+                "SELECT id, title, author, dynasty FROM poems WHERE id = :pid"),
+                {'pid': pid}).fetchone()
+            if not poem:
+                continue
+            q = _db_gen_question(db, poem, raw_lines, raw_titles, fixed_idx=idx)
+            if q:
+                questions.append(q)
+
+        if not questions:
+            return jsonify({'error': 'NO_QUESTIONS', 'message': '错题对应的诗句已下架，无法重练'}), 404
+
+        session_id = secrets.token_hex(16)
+        challenge_sessions[session_id] = {'questions': questions, 'dynasty': None}
+        return jsonify({'data': {'session_id': session_id, 'questions': questions}})
+    finally:
+        db.close()
 
 
 # ============ 启动 ============

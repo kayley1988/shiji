@@ -14,6 +14,10 @@
     <div v-if="phase === 'select'" class="phase-select animate-fadeUp">
       <div class="select-intro">
         <p class="intro-text">选择维度，开启你的诗词闯关之旅</p>
+        <button class="dash-link" @click="$router.push('/challenge/dashboard')">
+          <van-icon name="chart-trending-o" size="14" />
+          学习仪表盘 · 打卡日历 / 错题集
+        </button>
       </div>
 
       <!-- 朝代 -->
@@ -264,6 +268,9 @@
         <van-button v-if="resultData?.cumulative" type="primary" block round class="retry-btn" @click="continueEndless">继续刷 ∞</van-button>
         <van-button v-else type="primary" block round class="retry-btn" @click="handleRetry">再来一局</van-button>
         <van-button v-if="resultData?.cumulative" plain block round class="back-btn" @click="handleRetry">换个维度</van-button>
+        <van-button plain block round class="back-btn dash-entry" @click="$router.push('/challenge/dashboard')">
+          📊 查看学习仪表盘 · 错题重练
+        </van-button>
         <van-button plain block round class="back-btn" @click="$router.back()">返回首页</van-button>
       </div>
     </div>
@@ -299,9 +306,17 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { api } from '../api'
+import { useAuthStore } from '../stores/auth'
 
+const route = useRoute()
+const router = useRouter()
+const authStore = useAuthStore()
+const myUserId = computed(() => (authStore.user as any)?.id || '')
+// 错题重练模式（URL ?mistake=1 进入）
+const quizSource = ref<'normal' | 'mistake'>('normal')
 
 // ── 类型 ──────────────────────────────────────
 interface Dynasty { id: string; name: string; desc: string; count: number }
@@ -388,6 +403,11 @@ const starCount = computed(() => {
 // ── 加载维度 ──────────────────────────────────────
 onMounted(async () => {
   loadLifetime()
+  // 错题重练直达：/challenge?mistake=1
+  if (route.query.mistake === '1') {
+    await startMistakeQuiz()
+    return
+  }
   loading.value = true
   try {
     const res = await api.getChallengeDimensions()
@@ -398,6 +418,44 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+// ── 错题重练开局 ──────────────────────────────────────
+async function startMistakeQuiz() {
+  if (!myUserId.value) {
+    startError.value = '身份加载中，请稍候重试'
+    loading.value = false
+    // 身份未就绪时回退到普通配置页
+    try {
+      const res = await api.getChallengeDimensions()
+      dimensions.value = res.data
+    } catch { /* 忽略 */ }
+    return
+  }
+  loading.value = true
+  try {
+    const res = await api.startMistakeQuiz({ user_id: myUserId.value, count: 10 })
+    quizSource.value = 'mistake'
+    mode.value = 'classic'
+    sessionId.value = res.data.session_id
+    questions.value = res.data.questions
+    answers.value = questions.value.map(q => ({ line_id: q.line_id, answer: null, isCorrect: null }))
+    currentIdx.value = 0
+    selectedOpt.value = ''
+    showResult.value = false
+    explainOpen.value = false
+    phase.value = 'playing'
+    showToast('错题重练 · 答对即移出错题集')
+  } catch (e: any) {
+    showToast(e?.response?.data?.message || '错题集为空，先去闯关吧')
+    quizSource.value = 'normal'
+    try {
+      const res = await api.getChallengeDimensions()
+      dimensions.value = res.data
+    } catch { /* 忽略 */ }
+  } finally {
+    loading.value = false
+  }
+}
 
 // ── 切换 chip ──────────────────────────────────────
 function toggleChip(type: 'faction' | 'theme' | 'form', id: string) {
@@ -487,6 +545,14 @@ function nextQuestion() {
   }
 }
 
+// ── 提交身份/模式参数 ──────────────────────────────────────
+function submitExtra() {
+  return {
+    user_id: myUserId.value || undefined,
+    mode: quizSource.value === 'mistake' ? 'mistake_quiz' : (isEndless.value ? 'endless' : 'classic'),
+  }
+}
+
 // ── 无尽模式：结算本组 → 落账 → 无缝续组或收摊 ──────────────────────────────────────
 async function settleEndless(cashOut = false) {
   loading.value = true
@@ -496,6 +562,7 @@ async function settleEndless(cashOut = false) {
       answers: answers.value
         .filter(a => a.answer !== null)
         .map(a => ({ line_id: a.line_id, answer: a.answer as string })),
+      ...submitExtra(),
     })
     const d = res.data
     const answeredN = answers.value.filter(a => a.answer !== null).length
@@ -539,6 +606,7 @@ async function submitChallenge() {
       answers: answers.value
         .filter(a => a.answer !== null)
         .map(a => ({ line_id: a.line_id, answer: a.answer as string })),
+      ...submitExtra(),
     })
     resultData.value = res.data
     phase.value = 'result'
@@ -600,6 +668,7 @@ async function askExplain() {
 // ── 重玩 ──────────────────────────────────────
 function handleRetry() {
   selected.value = { dynasty: '', faction: '', theme: '', form: '' }
+  quizSource.value = 'normal'
   questions.value = []
   answers.value = []
   currentIdx.value = 0
@@ -616,6 +685,21 @@ function handleRetry() {
 .phase-select { padding: 16px; }
 .select-intro { text-align: center; margin-bottom: 20px; }
 .intro-text { font-size: 14px; color: var(--stone); }
+.dash-link {
+  display: inline-flex; align-items: center; gap: 5px;
+  margin-top: 10px; padding: 6px 16px;
+  font-size: 12.5px; letter-spacing: 1px;
+  color: var(--gold, #D4AF37);
+  background: rgba(212,175,55,0.08);
+  border: 1px solid rgba(212,175,55,0.35);
+  border-radius: 999px; cursor: pointer;
+  transition: background 0.2s;
+}
+.dash-link:hover { background: rgba(212,175,55,0.16); }
+.dash-entry {
+  color: var(--gold, #D4AF37) !important;
+  border-color: rgba(212,175,55,0.5) !important;
+}
 
 .dim-section { margin-bottom: 24px; }
 .dim-label {

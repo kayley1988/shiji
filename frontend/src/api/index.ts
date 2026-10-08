@@ -62,8 +62,8 @@ export const api = {
   poetryGenerate: (data: any) => http.post('/v1/poetry/generate', data, { timeout: 60000 }),
 
   // ── 认证 ─────────────────────────────────
-  anonymousLogin: () =>
-    http.post('/v1/auth/anonymous', {}),
+  anonymousLogin: (deviceId?: string) =>
+    http.post('/v1/auth/anonymous', { device_id: deviceId }),
 
   // 邮箱注册
   authRegister: (email: string, password: string, nickname?: string) =>
@@ -273,9 +273,21 @@ export const api = {
   }) =>
     http.post('/v1/challenge/start', data),
 
-  submitChallenge: (data: { session_id: string; answers: { line_id: string; answer: string }[] }) =>
+  submitChallenge: (data: { session_id: string; answers: { line_id: string; answer: string }[]; user_id?: string; mode?: string }) =>
     http.post('/v1/challenge/submit', data),
   // 返回 data.data: { total, correct, score, exp_gain, results }
+
+  // 学习仪表盘：统计卡 + 打卡日历 + 最近闯关
+  challengeDashboard: (userId: string, days = 84) =>
+    http.get('/v1/challenge/dashboard', { params: { user_id: userId, days } }),
+
+  // 错题集列表
+  challengeMistakes: (userId: string, limit = 100) =>
+    http.get('/v1/challenge/mistakes', { params: { user_id: userId, limit } }),
+
+  // 错题重练开局
+  startMistakeQuiz: (data: { user_id: string; count?: number }) =>
+    http.post('/v1/challenge/mistake-quiz/start', data),
 
   // ═══════════════════════════════════════════════════════
   // 接尾飞花令

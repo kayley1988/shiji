@@ -578,3 +578,43 @@ if __name__ == '__main__':
     engine = create_engine('sqlite:///shiyayaji.db', echo=True)
     init_db(engine)
     print("数据库初始化完成")
+
+
+class ChallengeRecord(Base):
+    """题库闯关记录（学习仪表盘数据源）"""
+    __tablename__ = 'challenge_records'
+
+    id         = Column(String(36), primary_key=True, default=gen_uuid)
+    user_id    = Column(String(36), nullable=True)   # 匿名用户 id（users.id），可空
+    mode       = Column(String(20), default='classic')  # classic / endless / mistake_quiz
+    total      = Column(Integer, default=0)
+    correct    = Column(Integer, default=0)
+    score      = Column(Integer, default=0)
+    dynasty    = Column(String(20), nullable=True)   # 组题朝代（可选）
+    created_at = Column(DateTime, default=utcnow)
+
+    __table_args__ = (
+        Index('ix_challenge_records_user_time', 'user_id', 'created_at'),
+    )
+
+
+class ChallengeMistake(Base):
+    """题库错题集"""
+    __tablename__ = 'challenge_mistakes'
+
+    id             = Column(String(36), primary_key=True, default=gen_uuid)
+    user_id        = Column(String(36), nullable=False)
+    line_id        = Column(String(100), nullable=False)   # poem_lines 主键
+    title          = Column(String(200), nullable=True)
+    author         = Column(String(100), nullable=True)
+    question       = Column(String(300), nullable=False)
+    user_answer    = Column(String(300), nullable=True)
+    correct_answer = Column(String(300), nullable=False)
+    mode           = Column(String(20), default='classic')
+    wrong_count    = Column(Integer, default=1)
+    last_wrong_at  = Column(DateTime, default=utcnow)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'line_id', name='uq_mistake_user_line'),
+        Index('ix_challenge_mistakes_user', 'user_id'),
+    )

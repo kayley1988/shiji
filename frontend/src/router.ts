@@ -108,6 +108,11 @@ const routes: RouteRecordRaw[] = [
     component: () => import('./pages/Challenge.vue')
   },
   {
+    path: '/challenge/dashboard',
+    name: 'ChallengeDashboard',
+    component: () => import('./pages/ChallengeDashboard.vue')
+  },
+  {
     path: '/tail-connect',
     name: 'TailConnect',
     component: () => import('./pages/TailConnect.vue')
