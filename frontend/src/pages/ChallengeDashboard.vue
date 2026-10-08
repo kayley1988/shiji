@@ -231,7 +231,7 @@ onMounted(async () => {
 .hm-col { display: flex; flex-direction: column; gap: 3px; }
 .hm-cell {
   width: 12px; height: 12px; border-radius: 3px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(168,127,42,0.08);
 }
 .hm-cell.lv1 { background: rgba(212,175,55,0.25); }
 .hm-cell.lv2 { background: rgba(212,175,55,0.5); }
@@ -261,7 +261,7 @@ onMounted(async () => {
 .mistake-item {
   border: 1px solid var(--line, rgba(255,255,255,0.08));
   border-radius: 12px; padding: 10px 12px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(168,127,42,0.05);
 }
 .mi-top { display: flex; justify-content: space-between; align-items: center; }
 .mi-title { font-size: 12px; color: var(--stone, #8a8f98); }
@@ -279,7 +279,7 @@ onMounted(async () => {
   align-items: center; gap: 10px;
   padding: 8px 12px;
   border-radius: 10px;
-  background: rgba(255,255,255,0.02);
+  background: rgba(168,127,42,0.05);
   border: 1px solid var(--line, rgba(255,255,255,0.08));
   font-size: 12px;
 }
@@ -302,9 +302,9 @@ onMounted(async () => {
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px;
-  background: rgba(20,22,27,0.92);
+  background: rgba(246,242,231,0.9);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(212,175,55,0.16);
+  border-bottom: 1px solid rgba(168,127,42,0.18);
 }
 .nav-back {
   width: 36px; height: 36px;

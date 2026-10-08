@@ -1,33 +1,33 @@
 /* ============================================
-   诗语雅集 — 暗夜鎏金 · 国风设计系统
-   配色：玄夜 / 鎏金 / 鎏金白（变量名保留旧称以兼容全局引用）
+   诗语雅集 — 宣纸雅集 · 浅色国风设计系统
+   配色：宣纸 / 浓墨 / 鎏金（变量名保留旧称以兼容全局引用）
    ============================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=ZCOOL+XiaoWei&family=Noto+Sans+SC:wght@300;400;500&family=LXGW+WenKai&display=swap');
 
-/* ── 设计令牌 — 暗夜鎏金 ─────────────────────── */
+/* ── 设计令牌 — 宣纸墨色 ─────────────────────── */
 :root {
-  /* 核心配色（文字） */
-  --ink-dark:     #F2ECDA;   /* 鎏金白 — 标题/主文字 */
-  --ink:         #D9D4C5;   /* 月白 — 正文 */
-  --ink-light:   #ABA694;   /* 淡金灰 — 次要文字 */
-  --ink-mist:    #847F6E;   /* 暮金灰 — 辅助文字 */
+  /* 核心配色（文字：墨色系，深→浅） */
+  --ink-dark:     #2B2419;   /* 浓墨 — 标题/主文字 */
+  --ink:         #4A4234;   /* 墨 — 正文 */
+  --ink-light:   #857C69;   /* 淡墨 — 次要文字 */
+  --ink-mist:    #A89F8B;   /* 宣纸灰 — 辅助文字 */
 
   /* 鎏金强调色（沿用 --cinnabar 变量名以兼容全局引用） */
-  --cinnabar:    #D4AF37;   /* 鎏金 — 强调/按钮 */
-  --cinnabar-dark: #B3942E; /* 深鎏金 */
-  --cinnabar-light: #E9CB6B; /* 浅鎏金 */
+  --cinnabar:    #A87F2A;   /* 鎏金褐 — 强调/按钮 */
+  --cinnabar-dark: #8C691E; /* 深鎏金 */
+  --cinnabar-light: #C9A227; /* 亮鎏金 */
 
-  /* 玄夜底色系 */
-  --paper:       #14161B;   /* 玄夜 — 页面背景 */
-  --paper-warm:  #191C23;   /* 深夜面板 */
-  --card:        #1E222B;   /* 墨玉 — 卡片背景 */
-  --card-hover:  #252A35;   /* 卡片悬停 */
+  /* 宣纸底色系 */
+  --paper:       #F6F2E7;   /* 宣纸 — 页面背景 */
+  --paper-warm:  #EFE9D8;   /* 米宣 — 次级背景 */
+  --card:        #FDFBF3;   /* 素白 — 卡片背景 */
+  --card-hover:  #FFFFFF;   /* 卡片悬停 */
 
   /* 分割/边框 */
-  --line:        #2E333F;   /* 夜幕 — 分割线 */
-  --line-light:  #262B35;   /* 深夜 — 边框 */
-  
+  --line:        #DCD3BC;   /* 纸纹 — 分割线 */
+  --line-light:  #E7E0CC;   /* 浅纸纹 — 边框 */
+
   /* 兼容旧名 */
   --qinglu:       var(--cinnabar);
   --qinglu-dark:  var(--cinnabar-dark);
@@ -62,12 +62,12 @@
   --font-serif:   'LXGW WenKai', 'Noto Serif SC', 'FangSong', Georgia, serif;
   --font-sans:   'Noto Sans SC', 'PingFang SC', sans-serif;
 
-  /* 阴影 — 暗夜风 */
-  --shadow-sm:   0 1px 4px rgba(0,0,0,0.35);
-  --shadow-md:   0 2px 12px rgba(0,0,0,0.45);
-  --shadow-lg:   0 4px 24px rgba(0,0,0,0.55);
-  --shadow-qinglu: 0 2px 12px rgba(212,175,55,0.22), 0 1px 3px rgba(0,0,0,0.4);
-  --shadow-inset: inset 0 1px 3px rgba(0,0,0,0.3);
+  /* 阴影 — 暖纸色（浅色底阴影带褐调，不用纯黑） */
+  --shadow-sm:   0 1px 4px rgba(112, 92, 48, 0.10);
+  --shadow-md:   0 2px 12px rgba(112, 92, 48, 0.13);
+  --shadow-lg:   0 4px 24px rgba(112, 92, 48, 0.16);
+  --shadow-qinglu: 0 2px 12px rgba(168, 127, 42, 0.20), 0 1px 3px rgba(112, 92, 48, 0.12);
+  --shadow-inset: inset 0 1px 3px rgba(112, 92, 48, 0.12);
 
   /* 圆角 */
   --radius-sm:   4px;
@@ -117,7 +117,7 @@ a:hover { color: var(--cinnabar-dark); }
 
 /* ── 选中文字 ────────────────────────────────── */
 ::selection {
-  background: rgba(212,175,55,0.25);
+  background: rgba(168,127,42,0.22);
   color: var(--ink-dark);
 }
 
@@ -246,8 +246,8 @@ a:hover { color: var(--cinnabar-dark); }
 
 /* 标签 */
 .van-tag--primary {
-  background: rgba(212,175,55,0.14);
-  color: var(--cinnabar-light);
+  background: rgba(168,127,42,0.12);
+  color: var(--cinnabar-dark);
 }
 
 /* 弹出层 */

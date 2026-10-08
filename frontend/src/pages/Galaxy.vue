@@ -180,14 +180,14 @@ interface GoldenLine {
   ts: number
 }
 
-// ---------- 暗夜鎏金配色 ----------
-const BG = 0x14161b            // 玄夜
-const GOLD = 0xd4af37          // 鎏金
+// ---------- 宣纸星图配色（浅底墨色） ----------
+const BG = 0xf6f2e7            // 宣纸
+const GOLD = 0xa87f2a          // 鎏金褐
 const DYN_COLORS: Record<string, string> = {
-  '唐': '#D4AF37',             // 鎏金
-  '宋': '#6FB3A8',             // 青瓷
-  '元': '#C4756B',             // 绛陶
-  '未知': '#8B8FA3'
+  '唐': '#A87F2A',             // 鎏金褐
+  '宋': '#3E8E7E',             // 深青瓷
+  '元': '#A3503F',             // 绛陶
+  '未知': '#8A8577'
 }
 // 朝代泳道（横轴）：laneY 为纵轴位置，范围用于无年表作者的分布
 const DYN_RANGES: Record<string, [number, number]> = {
@@ -300,10 +300,11 @@ function makeGlowTexture(): THREE.CanvasTexture {
   const c = document.createElement('canvas')
   c.width = c.height = 128
   const ctx = c.getContext('2d')!
+  // 纯 alpha 光晕（颜色由 material.color 决定，浅底正常混合不烧白）
   const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64)
   g.addColorStop(0.0, 'rgba(255,255,255,1)')
-  g.addColorStop(0.18, 'rgba(255,255,255,0.92)')
-  g.addColorStop(0.45, 'rgba(255,255,255,0.28)')
+  g.addColorStop(0.25, 'rgba(255,255,255,0.75)')
+  g.addColorStop(0.55, 'rgba(255,255,255,0.22)')
   g.addColorStop(1.0, 'rgba(255,255,255,0)')
   ctx.fillStyle = g
   ctx.fillRect(0, 0, 128, 128)
@@ -328,15 +329,15 @@ function buildStarfield() {
     pos[i * 3] = r * Math.sin(ph) * Math.cos(th)
     pos[i * 3 + 1] = r * Math.cos(ph) * 0.6
     pos[i * 3 + 2] = r * Math.sin(ph) * Math.sin(th)
-    // 暖金色星尘，贴合鎏金主题
-    c.setHSL(0.09 + Math.random() * 0.06, 0.45, 0.55 + Math.random() * 0.3)
+    // 暖墨色星尘（浅底用正常混合，加色混合会烧白）
+    c.setHSL(0.08 + Math.random() * 0.05, 0.30, 0.40 + Math.random() * 0.22)
     col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b
   }
   geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3))
   const mat = new THREE.PointsMaterial({
     size: 2.2, sizeAttenuation: true, vertexColors: true,
-    transparent: true, opacity: 0.8, depthWrite: false, blending: THREE.AdditiveBlending
+    transparent: true, opacity: 0.35, depthWrite: false
   })
   scene.add(new THREE.Points(geo, mat))
 }
@@ -344,8 +345,8 @@ function buildStarfield() {
 function buildCoreGlow() {
   if (!scene || !galaxy) return
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({
-    map: GLOW, color: GOLD, transparent: true, opacity: 0.15,
-    depthWrite: false, blending: THREE.AdditiveBlending
+    map: GLOW, color: GOLD, transparent: true, opacity: 0.10,
+    depthWrite: false
   }))
   sp.scale.set(700, 500, 1)
   galaxy.add(sp)
@@ -387,7 +388,7 @@ function buildLanes() {
     ])
     galaxy!.add(new THREE.Line(geo, mat))
     // 轴标：朝代 + 年代范围
-    const label = makeTextSprite(`${dyn} ${range[0]}–${range[1]}`, DYN_COLORS[dyn] || '#D4AF37', 1)
+    const label = makeTextSprite(`${dyn} ${range[0]}–${range[1]}`, DYN_COLORS[dyn] || '#A87F2A', 1)
     label.position.set(X_LEFT - 105, y, 0)
     galaxy!.add(label)
   })
@@ -400,7 +401,7 @@ function addStar(p: GalaxyPoet) {
   const size = poetSize(p.count)
   const mat = new THREE.SpriteMaterial({
     map: GLOW, color, transparent: true, opacity: 0.95,
-    depthWrite: false, blending: THREE.AdditiveBlending
+    depthWrite: false
   })
   const sp = new THREE.Sprite(mat)
   sp.position.copy(pos)
@@ -410,8 +411,8 @@ function addStar(p: GalaxyPoet) {
   const obj: { sprite: THREE.Sprite; poet: GalaxyPoet; baseSize: number; core?: THREE.Sprite; labelEl?: HTMLDivElement } = { sprite: sp, poet: p, baseSize: size }
   if (p.count >= 400) {
     const core = new THREE.Sprite(new THREE.SpriteMaterial({
-      map: GLOW, color: 0xfff6dd, transparent: true, opacity: 0.9,
-      depthWrite: false, blending: THREE.AdditiveBlending
+      map: GLOW, color: 0x8a6a1f, transparent: true, opacity: 0.9,
+      depthWrite: false
     }))
     core.scale.set(size * 0.42, size * 0.42, 1)
     core.position.copy(pos)
@@ -717,6 +718,7 @@ async function init() {
 
   GLOW = makeGlowTexture()
   scene = new THREE.Scene()
+  scene.background = new THREE.Color(BG)
   scene.fog = new THREE.FogExp2(BG, 0.0011)
   galaxy = new THREE.Group()
   scene.add(galaxy)
@@ -783,7 +785,7 @@ onBeforeUnmount(() => {
 .galaxy-page {
   position: fixed;
   inset: 0;
-  background: var(--paper, #14161B);
+  background: var(--paper, #F6F2E7);
   overflow: hidden;
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
@@ -794,13 +796,13 @@ onBeforeUnmount(() => {
 .g-loading {
   position: absolute; inset: 0; z-index: 30;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
-  background: var(--paper, #14161B);
+  background: var(--paper, #F6F2E7);
 }
-.g-loading.err { background: rgba(20, 22, 27, 0.9); }
+.g-loading.err { background: rgba(246,242,231,0.92); }
 .g-loading-title {
   font-size: 34px; letter-spacing: 14px; font-weight: 700;
-  color: var(--cinnabar, #D4AF37);
-  text-shadow: 0 0 24px rgba(212, 175, 55, 0.45);
+  color: var(--cinnabar, #A87F2A);
+  text-shadow: 0 0 24px rgba(168,127,42,0.45);
 }
 .g-loading-sub { margin-top: 14px; font-size: 13px; color: var(--ink-light, #ABA694); }
 
@@ -809,40 +811,40 @@ onBeforeUnmount(() => {
   position: absolute; top: 0; left: 0; right: 0; z-index: 20;
   display: flex; align-items: center; gap: 16px;
   padding: 14px 20px;
-  background: linear-gradient(to bottom, rgba(20, 22, 27, 0.9), rgba(20, 22, 27, 0));
+  background: linear-gradient(to bottom, rgba(246,242,231,0.92), rgba(246,242,231,0));
 }
 .g-back {
   padding: 6px 14px; border-radius: 18px; font-size: 13px;
   color: var(--ink, #D9D4C5);
-  background: var(--card, #1E222B);
-  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: var(--card, #FDFBF3);
+  border: 1px solid rgba(168,127,42,0.35);
   cursor: pointer; user-select: none;
   transition: border-color 0.2s, color 0.2s;
 }
-.g-back:hover { border-color: var(--cinnabar, #D4AF37); color: var(--cinnabar-light, #E9CB6B); }
+.g-back:hover { border-color: var(--cinnabar, #A87F2A); color: var(--cinnabar-light, #C9A227); }
 .g-title {
   font-size: 17px; font-weight: 700; letter-spacing: 6px;
-  color: var(--cinnabar, #D4AF37);
+  color: var(--cinnabar, #A87F2A);
 }
 .g-searchwrap { position: relative; margin-left: auto; }
 .g-search {
   width: 220px; padding: 7px 14px; border-radius: 18px;
-  background: var(--card, #1E222B);
-  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: var(--card, #FDFBF3);
+  border: 1px solid rgba(168,127,42,0.35);
   color: var(--ink, #D9D4C5); font-size: 13px; outline: none;
 }
 .g-search::placeholder { color: var(--ink-mist, #847F6E); }
-.g-search:focus { border-color: var(--cinnabar, #D4AF37); }
+.g-search:focus { border-color: var(--cinnabar, #A87F2A); }
 .g-suggest {
   position: absolute; top: 40px; right: 0; width: 260px; max-height: 320px; overflow-y: auto;
-  background: var(--card, #1E222B);
-  border: 1px solid rgba(212, 175, 55, 0.35);
+  background: var(--card, #FDFBF3);
+  border: 1px solid rgba(168,127,42,0.35);
   border-radius: 10px; z-index: 25;
 }
 .g-suggest-item {
   padding: 8px 14px; font-size: 13px; color: var(--ink, #D9D4C5); cursor: pointer;
 }
-.g-suggest-item:hover, .g-suggest-item.active { background: var(--card-hover, #252A35); color: var(--cinnabar-light, #E9CB6B); }
+.g-suggest-item:hover, .g-suggest-item.active { background: var(--card-hover, #FFFFFF); color: var(--cinnabar-light, #C9A227); }
 .g-suggest-item .meta { float: right; font-size: 11px; color: var(--ink-mist, #847F6E); }
 
 /* 图例 */
@@ -850,8 +852,8 @@ onBeforeUnmount(() => {
   position: absolute; left: 20px; bottom: 52px; z-index: 25;
   display: flex; flex-direction: column; gap: 6px;
   padding: 12px 16px;
-  background: rgba(30, 34, 43, 0.85);
-  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(253,251,243,0.92);
+  border: 1px solid rgba(168,127,42,0.25);
   border-radius: 12px; backdrop-filter: blur(6px);
 }
 .g-legend .row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink, #D9D4C5); }
@@ -866,13 +868,13 @@ onBeforeUnmount(() => {
 .g-tools .tool {
   padding: 6px 14px; border-radius: 16px; font-size: 12px;
   color: var(--ink-light, #ABA694);
-  background: rgba(30, 34, 43, 0.85);
-  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: rgba(253,251,243,0.92);
+  border: 1px solid rgba(168,127,42,0.25);
   cursor: pointer; user-select: none;
 }
 .g-tools .tool.on, .g-tools .tool:hover {
-  color: var(--cinnabar, #D4AF37);
-  border-color: var(--cinnabar, #D4AF37);
+  color: var(--cinnabar, #A87F2A);
+  border-color: var(--cinnabar, #A87F2A);
 }
 
 /* 底部提示 */
@@ -888,17 +890,17 @@ onBeforeUnmount(() => {
   transform: translate(12px, -50%);
   padding: 5px 12px; border-radius: 8px;
   font-size: 12px; white-space: nowrap; pointer-events: none;
-  color: var(--cinnabar-light, #E9CB6B);
-  background: rgba(20, 22, 27, 0.92);
-  border: 1px solid rgba(212, 175, 55, 0.45);
+  color: var(--cinnabar-light, #C9A227);
+  background: rgba(246,242,231,0.95);
+  border: 1px solid rgba(168,127,42,0.45);
 }
 
 /* 诗人面板 */
 .g-panel {
   position: absolute; top: 0; right: -380px; bottom: 0; z-index: 20;
   width: 340px; padding: 56px 22px 22px;
-  background: rgba(25, 28, 35, 0.96);
-  border-left: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(248,245,236,0.97);
+  border-left: 1px solid rgba(168,127,42,0.35);
   transition: right 0.35s ease;
   overflow-y: auto;
 }
@@ -908,9 +910,9 @@ onBeforeUnmount(() => {
   width: 28px; height: 28px; line-height: 26px; text-align: center;
   border-radius: 50%; font-size: 18px; cursor: pointer;
   color: var(--ink-light, #ABA694);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  border: 1px solid rgba(168,127,42,0.3);
 }
-.panel-close:hover { color: var(--cinnabar, #D4AF37); }
+.panel-close:hover { color: var(--cinnabar, #A87F2A); }
 .panel-name { font-size: 26px; font-weight: 700; color: var(--ink-dark, #F2ECDA); }
 .panel-dyn {
   display: inline-block; margin-top: 8px; padding: 3px 12px;
@@ -920,10 +922,10 @@ onBeforeUnmount(() => {
 .panel-tip { font-size: 13px; color: var(--ink-mist, #847F6E); padding: 8px 0; }
 .poem {
   padding: 10px 14px; border-radius: 10px;
-  background: var(--card, #1E222B);
-  border: 1px solid rgba(212, 175, 55, 0.18);
+  background: var(--card, #FDFBF3);
+  border: 1px solid rgba(168,127,42,0.18);
 }
-.poem .pt { font-size: 14px; font-weight: 600; color: var(--cinnabar-light, #E9CB6B); }
+.poem .pt { font-size: 14px; font-weight: 600; color: var(--cinnabar-light, #C9A227); }
 .poem .pc {
   margin-top: 8px;
   font-size: 13px; line-height: 2.0; color: var(--ink, #D9D4C5);
@@ -932,8 +934,8 @@ onBeforeUnmount(() => {
 .panel-actions {
   margin-top: 16px; padding: 10px 0; text-align: center;
   border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer;
-  color: #14161B; background: linear-gradient(135deg, #E9CB6B, #D4AF37);
-  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.35);
+  color: #201A05; background: linear-gradient(135deg, #C9A227, #A87F2A);
+  box-shadow: 0 2px 12px rgba(168,127,42,0.35);
   transition: filter 0.2s;
 }
 .panel-actions:hover { filter: brightness(1.08); }
@@ -942,13 +944,13 @@ onBeforeUnmount(() => {
 .g-reader {
   position: fixed; inset: 0; z-index: 200;
   display: flex; flex-direction: column;
-  background: #14161b;
+  background: var(--card, #FDFBF3);
 }
 .rd-top {
   display: flex; align-items: center; gap: 12px;
   padding: 18px 28px 14px;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.22);
-  background: linear-gradient(to bottom, rgba(30, 34, 43, 0.7), transparent);
+  border-bottom: 1px solid rgba(168,127,42,0.22);
+  background: linear-gradient(to bottom, rgba(246,242,231,0.7), transparent);
 }
 .rd-name { font-size: 26px; font-weight: 700; color: var(--ink-dark, #F2ECDA); }
 .rd-dyn {
@@ -959,22 +961,22 @@ onBeforeUnmount(() => {
 .rd-close {
   margin-left: auto; width: 32px; height: 32px; line-height: 30px; text-align: center;
   border-radius: 50%; font-size: 20px; cursor: pointer; user-select: none;
-  color: var(--ink-light, #ABA694); border: 1px solid rgba(212, 175, 55, 0.3);
+  color: var(--ink-light, #ABA694); border: 1px solid rgba(168,127,42,0.3);
 }
-.rd-close:hover { color: var(--cinnabar, #D4AF37); border-color: var(--cinnabar, #D4AF37); }
+.rd-close:hover { color: var(--cinnabar, #A87F2A); border-color: var(--cinnabar, #A87F2A); }
 .rd-body { flex: 1; overflow-y: auto; padding: 20px 28px 130px; }
 .rd-body::-webkit-scrollbar { width: 6px; }
-.rd-body::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 3px; }
+.rd-body::-webkit-scrollbar-thumb { background: rgba(168,127,42,0.3); border-radius: 3px; }
 .rd-tip { text-align: center; padding: 40px 0; font-size: 14px; color: var(--ink-mist, #847F6E); }
 .rd-poem {
   max-width: 760px; margin: 0 auto 22px; padding: 16px 24px;
-  border-radius: 12px; background: var(--card, #1E222B);
-  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 12px; background: var(--card, #FDFBF3);
+  border: 1px solid rgba(168,127,42,0.18);
 }
 .rd-title {
   font-size: 16px; font-weight: 700; margin-bottom: 10px;
-  color: var(--cinnabar-light, #E9CB6B);
-  border-left: 3px solid var(--cinnabar, #D4AF37); padding-left: 10px;
+  color: var(--cinnabar-light, #C9A227);
+  border-left: 3px solid var(--cinnabar, #A87F2A); padding-left: 10px;
 }
 .rd-lines { display: flex; flex-direction: column; }
 .rd-line {
@@ -982,13 +984,13 @@ onBeforeUnmount(() => {
   font-size: 15px; line-height: 2.1; color: var(--ink, #D9D4C5);
   transition: background 0.15s, color 0.15s;
 }
-.rd-line:hover { background: rgba(212, 175, 55, 0.1); color: var(--cinnabar-light, #E9CB6B); }
+.rd-line:hover { background: rgba(168,127,42,0.1); color: var(--cinnabar-light, #C9A227); }
 .rd-line.picked {
-  background: rgba(212, 175, 55, 0.14);
-  color: var(--cinnabar-light, #E9CB6B); font-weight: 600;
-  text-shadow: 0 0 10px rgba(212, 175, 55, 0.3);
+  background: rgba(168,127,42,0.14);
+  color: var(--cinnabar-light, #C9A227); font-weight: 600;
+  text-shadow: 0 0 10px rgba(168,127,42,0.3);
 }
-.rd-line.picked::after { content: ' ✦'; color: var(--cinnabar, #D4AF37); font-size: 12px; }
+.rd-line.picked::after { content: ' ✦'; color: var(--cinnabar, #A87F2A); font-size: 12px; }
 .rd-line.none { color: var(--ink-mist, #847F6E); cursor: default; font-size: 13px; }
 .rd-line.none::after { content: none; }
 
@@ -997,65 +999,65 @@ onBeforeUnmount(() => {
   position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%);
   z-index: 55; display: flex; align-items: center; gap: 10px;
   padding: 10px 18px; border-radius: 24px;
-  background: rgba(30, 34, 43, 0.95);
-  border: 1px solid rgba(212, 175, 55, 0.4);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+  background: rgba(253,251,243,0.96);
+  border: 1px solid rgba(168,127,42,0.4);
+  box-shadow: 0 4px 24px rgba(112,92,48,0.18);
   backdrop-filter: blur(8px); white-space: nowrap;
 }
-.tray-count { font-size: 13px; font-weight: 600; color: var(--cinnabar-light, #E9CB6B); }
+.tray-count { font-size: 13px; font-weight: 600; color: var(--cinnabar-light, #C9A227); }
 .tray-hint { font-size: 13px; color: var(--ink-mist, #847F6E); }
 .tray-btn {
   padding: 6px 16px; border-radius: 16px; font-size: 13px; cursor: pointer;
-  color: var(--ink, #D9D4C5); background: rgba(212, 175, 55, 0.12);
-  border: 1px solid rgba(212, 175, 55, 0.4); user-select: none;
+  color: var(--ink, #D9D4C5); background: rgba(168,127,42,0.12);
+  border: 1px solid rgba(168,127,42,0.4); user-select: none;
   transition: background 0.15s, color 0.15s;
 }
-.tray-btn:hover { background: rgba(212, 175, 55, 0.25); color: var(--cinnabar-light, #E9CB6B); }
+.tray-btn:hover { background: rgba(168,127,42,0.25); color: var(--cinnabar-light, #C9A227); }
 .tray-btn.gold {
   color: #14161B; font-weight: 600;
-  background: linear-gradient(135deg, #E9CB6B, #D4AF37);
+  background: linear-gradient(135deg, #C9A227, #A87F2A);
   border-color: transparent;
 }
-.tray-btn.gold:hover { filter: brightness(1.08); background: linear-gradient(135deg, #E9CB6B, #D4AF37); }
-.tray-btn.ghost { background: transparent; border-color: rgba(212, 175, 55, 0.25); color: var(--ink-mist, #847F6E); }
+.tray-btn.gold:hover { filter: brightness(1.08); background: linear-gradient(135deg, #C9A227, #A87F2A); }
+.tray-btn.ghost { background: transparent; border-color: rgba(168,127,42,0.25); color: var(--ink-mist, #847F6E); }
 
 /* ---------- 金句集抽屉 ---------- */
 .g-collect {
   position: absolute; top: 0; right: 0; bottom: 0; z-index: 45;
   width: 400px; display: flex; flex-direction: column;
-  background: rgba(25, 28, 35, 0.97);
-  border-left: 1px solid rgba(212, 175, 55, 0.35);
+  background: rgba(248,245,236,0.97);
+  border-left: 1px solid rgba(168,127,42,0.35);
   box-shadow: -8px 0 32px rgba(0, 0, 0, 0.45);
   animation: clIn 0.3s ease;
 }
 @keyframes clIn { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
 .cl-head {
   display: flex; align-items: center; gap: 10px;
-  padding: 16px 20px; border-bottom: 1px solid rgba(212, 175, 55, 0.22);
+  padding: 16px 20px; border-bottom: 1px solid rgba(168,127,42,0.22);
 }
-.cl-title { font-size: 16px; font-weight: 700; color: var(--cinnabar-light, #E9CB6B); letter-spacing: 1px; }
+.cl-title { font-size: 16px; font-weight: 700; color: var(--cinnabar-light, #C9A227); letter-spacing: 1px; }
 .cl-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .cl-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
 .cl-body::-webkit-scrollbar { width: 6px; }
-.cl-body::-webkit-scrollbar-thumb { background: rgba(212, 175, 55, 0.3); border-radius: 3px; }
+.cl-body::-webkit-scrollbar-thumb { background: rgba(168,127,42,0.3); border-radius: 3px; }
 .cl-item {
   position: relative; margin-bottom: 14px; padding: 12px 14px;
-  border-radius: 10px; background: var(--card, #1E222B);
-  border: 1px solid rgba(212, 175, 55, 0.18);
+  border-radius: 10px; background: var(--card, #FDFBF3);
+  border: 1px solid rgba(168,127,42,0.18);
 }
 .cl-text { font-size: 14px; line-height: 1.9; color: var(--ink, #D9D4C5); }
 .cl-src { margin-top: 6px; font-size: 12px; color: var(--ink-mist, #847F6E); }
 .cl-ops { margin-top: 8px; display: flex; gap: 14px; }
 .cl-ops span { font-size: 12px; color: var(--ink-light, #ABA694); cursor: pointer; user-select: none; }
-.cl-ops span:hover { color: var(--cinnabar, #D4AF37); }
+.cl-ops span:hover { color: var(--cinnabar, #A87F2A); }
 
 /* Toast */
 .g-toast {
   position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%);
   z-index: 70; padding: 9px 22px; border-radius: 20px;
-  font-size: 13px; color: var(--cinnabar-light, #E9CB6B);
-  background: rgba(30, 34, 43, 0.96);
-  border: 1px solid rgba(212, 175, 55, 0.5);
+  font-size: 13px; color: var(--cinnabar-light, #C9A227);
+  background: rgba(253,251,243,0.97);
+  border: 1px solid rgba(168,127,42,0.5);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   pointer-events: none; animation: toastIn 0.25s ease;
 }
@@ -1074,7 +1076,7 @@ onBeforeUnmount(() => {
   font-size: 12px;
   font-weight: 600;
   pointer-events: none;
-  text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 0 12px rgba(0, 0, 0, 0.7);
+  text-shadow: 0 0 6px rgba(246,242,231,0.95), 0 0 12px rgba(246,242,231,0.75);
   font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 .g-plabel-b {

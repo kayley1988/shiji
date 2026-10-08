@@ -87,9 +87,9 @@ const pageTitle = computed(() => titleMap[route.name as string] || '')
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 16px;
-  background: rgba(20,22,27,0.92);
+  background: rgba(246,242,231,0.9);
   backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(212,175,55,0.16);
+  border-bottom: 1px solid rgba(168,127,42,0.18);
 }
 .nav-hamburger {
   width: 36px; height: 36px;

@@ -113,12 +113,12 @@ onUnmounted(() => {
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-display);
   font-size: 36px; color: #fff;
-  box-shadow: 0 8px 32px rgba(61,122,138,0.35);
+  box-shadow: 0 8px 32px rgba(168,127,42,0.35);
   animation: pulse 2s ease-in-out infinite;
 }
 @keyframes pulse {
-  0%, 100% { box-shadow: 0 8px 32px rgba(61,122,138,0.35); }
-  50% { box-shadow: 0 8px 48px rgba(61,122,138,0.55); }
+  0%, 100% { box-shadow: 0 8px 32px rgba(168,127,42,0.35); }
+  50% { box-shadow: 0 8px 48px rgba(168,127,42,0.5); }
 }
 .splash-title {
   font-family: var(--font-display);
